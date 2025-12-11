@@ -1,0 +1,5 @@
+{
+  "name": "BatchBlitz",
+  "description": "A high-performance, client-side bulk image processor. Resize, watermark, and convert images securely in your browser with a professional glassmorphism interface.",
+  "requestFramePermissions": []
+}
