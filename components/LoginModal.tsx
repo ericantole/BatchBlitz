@@ -12,8 +12,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Redirect to the Auth Callback route for code exchange
-          redirectTo: `${window.location.origin}/auth/callback`
+          // Redirect to root. Supabase client-side listener in App.tsx will handle the session exchange.
+          redirectTo: window.location.origin
         }
       });
       if (error) throw error;
