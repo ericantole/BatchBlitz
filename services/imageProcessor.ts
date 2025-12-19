@@ -161,26 +161,45 @@ function calculatePosition(
     let y = 0;
 
     switch (position) {
-      case 'center':
-        x = (targetW - contentW) / 2;
-        y = (targetH - contentH) / 2;
-        break;
-      case 'bottom-right':
-        x = targetW - contentW - padding;
-        y = targetH - contentH - padding;
-        break;
-      case 'bottom-left':
+      case 'top-left':
         x = padding;
-        y = targetH - contentH - padding;
+        y = padding;
+        break;
+      case 'top-center':
+        x = (targetW - contentW) / 2;
+        y = padding;
         break;
       case 'top-right':
         x = targetW - contentW - padding;
         y = padding;
         break;
-      case 'top-left':
+      case 'middle-left':
         x = padding;
-        y = padding;
+        y = (targetH - contentH) / 2;
         break;
+      case 'center':
+        x = (targetW - contentW) / 2;
+        y = (targetH - contentH) / 2;
+        break;
+      case 'middle-right':
+        x = targetW - contentW - padding;
+        y = (targetH - contentH) / 2;
+        break;
+      case 'bottom-left':
+        x = padding;
+        y = targetH - contentH - padding;
+        break;
+      case 'bottom-center':
+        x = (targetW - contentW) / 2;
+        y = targetH - contentH - padding;
+        break;
+      case 'bottom-right':
+        x = targetW - contentW - padding;
+        y = targetH - contentH - padding;
+        break;
+      default: // center
+        x = (targetW - contentW) / 2;
+        y = (targetH - contentH) / 2;
     }
     return { x, y };
 }

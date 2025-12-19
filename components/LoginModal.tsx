@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, LogIn } from 'lucide-react';
+import { X, LogIn, ShieldCheck } from 'lucide-react';
 import { supabase } from '../utils/supabase/client';
 
 interface LoginModalProps {
@@ -12,8 +12,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Redirect to root. Supabase client-side listener in App.tsx will handle the session exchange.
-          redirectTo: window.location.origin
+          redirectTo: window.location.href
         }
       });
       if (error) throw error;
@@ -30,7 +29,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
         onClick={onClose} 
       />
       
-      <div className="relative w-full max-w-sm bg-paper-base rounded-2xl shadow-float overflow-hidden animate-in zoom-in-95 duration-300 border border-white">
+      <div className="relative w-full max-w-sm bg-paper-base rounded-3xl shadow-float overflow-hidden animate-in zoom-in-95 duration-300 border border-white">
         <div className="p-8 space-y-8">
             <button 
                 onClick={onClose} 
@@ -40,14 +39,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
             </button>
 
             <div className="text-center space-y-4 pt-2">
-                <div className="w-16 h-16 mx-auto bg-white rounded-full flex items-center justify-center shadow-card mb-2 border border-gray-100">
+                <div className="w-16 h-16 mx-auto bg-white rounded-2xl flex items-center justify-center shadow-card mb-2 border border-gray-100 rotate-3">
                     <LogIn className="w-8 h-8 text-ink-main" />
                 </div>
                 <h2 className="text-2xl font-serif font-bold tracking-tight text-ink-main">
-                    Welcome Back
+                    Studio Access
                 </h2>
                 <p className="text-ink-muted text-sm font-sans">
-                    Sign in to save your presets and access Pro features.
+                    Sign in to sync your Pro status and presets.
                 </p>
             </div>
 
@@ -55,7 +54,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                 onClick={handleGoogleLogin}
                 className="w-full bg-white hover:bg-gray-50 text-ink-main font-bold font-sans py-4 rounded-xl shadow-card border border-gray-100 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
             >
-                {/* Google Logo SVG */}
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -77,9 +75,12 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
                 Continue with Google
             </button>
 
-            <p className="text-center text-[10px] text-ink-muted font-sans">
-                By continuing, you agree to our Terms of Service.
-            </p>
+            <div className="pt-6 border-t border-gray-100 text-center">
+                 <p className="text-[10px] text-ink-muted leading-relaxed flex flex-col items-center gap-2">
+                    <ShieldCheck size={14} className="text-apple-green" />
+                    We only use your account to verify Pro status. We do not track activity or store images. 100% Local Processing.
+                </p>
+            </div>
         </div>
       </div>
     </div>

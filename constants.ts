@@ -21,6 +21,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
     format: OutputFormat.JPG,
     quality: 0.9,
   },
+  rename: {
+    enabled: false,
+    pattern: '{original}_{n}',
+    startSequence: 1
+  }
 };
 
 export const MAX_FREE_FILES = 20;

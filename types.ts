@@ -8,6 +8,7 @@ export enum ImageStatus {
 export interface ImageFile {
   id: string;
   file: File;
+  path?: string; // Relative folder path (e.g. "Vacation/Beach/")
   previewUrl: string;
   processedUrl?: string;
   status: ImageStatus;
@@ -41,7 +42,7 @@ export interface WatermarkSettings {
   // Shared Props
   color: string;
   opacity: number; // 0-1
-  position: 'center' | 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  position: 'center' | 'top-left' | 'top-center' | 'top-right' | 'middle-left' | 'middle-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
 }
 
 export interface ConvertSettings {
@@ -49,8 +50,22 @@ export interface ConvertSettings {
   quality: number; // 0-1
 }
 
+export interface RenameSettings {
+  enabled: boolean;
+  pattern: string; // e.g., "{original}_{n}"
+  startSequence: number;
+}
+
 export interface AppSettings {
   resize: ResizeSettings;
   watermark: WatermarkSettings;
   convert: ConvertSettings;
+  rename: RenameSettings;
+}
+
+export interface Preset {
+  id: string;
+  name: string;
+  settings: AppSettings;
+  createdAt: number;
 }
