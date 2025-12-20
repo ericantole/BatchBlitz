@@ -56,9 +56,19 @@ export interface RenameSettings {
   startSequence: number;
 }
 
+export interface SignatureSettings {
+  enabled: boolean;
+  mode: 'single' | 'batch';
+  inputMode: 'draw' | 'upload';
+  imageData: string | null; // Base64 or URL
+  position: { x: number; y: number }; // Percentage 0-100
+  scale: number; // 1-100
+}
+
 export interface AppSettings {
   resize: ResizeSettings;
   watermark: WatermarkSettings;
+  signature: SignatureSettings;
   convert: ConvertSettings;
   rename: RenameSettings;
 }

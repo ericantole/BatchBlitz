@@ -17,6 +17,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
     position: 'center',
     scale: 0.3, // 30% of width by default
   },
+  signature: {
+    enabled: false,
+    mode: 'single',
+    inputMode: 'draw',
+    imageData: null,
+    position: { x: 50, y: 50 }, // Center
+    scale: 20, // 20%
+  },
   convert: {
     format: OutputFormat.JPG,
     quality: 0.9,

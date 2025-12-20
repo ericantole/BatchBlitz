@@ -4,83 +4,112 @@ import { supabase } from '../utils/supabase/client';
 
 interface LoginModalProps {
   onClose: () => void;
+  reason?: string | null;
+  next?: string;
 }
 
-export const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
+import { useToast } from './Toast';
+
+export const LoginModal: React.FC<LoginModalProps> = ({ onClose, reason, next }) => {
+  const [loading, setLoading] = React.useState(false);
+  const { showToast } = useToast();
+
   const handleGoogleLogin = async () => {
+    if (loading) return;
+    setLoading(true);
+
+    // Persist redirect URL
+    if (next) {
+      localStorage.setItem('batchblitz_redirect', next);
+    }
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.href
+          redirectTo: window.location.origin
         }
       });
       if (error) throw error;
     } catch (error) {
       console.error('Error logging in:', error);
-      alert('Failed to login with Google');
+      showToast('Failed to login with Google', 'error');
+      setLoading(false);
     }
   };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-white/80 backdrop-blur-sm animate-in fade-in duration-500" 
-        onClick={onClose} 
+      <div
+        className="absolute inset-0 bg-white/80 backdrop-blur-sm animate-in fade-in duration-500"
+        onClick={onClose}
       />
-      
+
       <div className="relative w-full max-w-sm bg-paper-base rounded-3xl shadow-float overflow-hidden animate-in zoom-in-95 duration-300 border border-white">
         <div className="p-8 space-y-8">
-            <button 
-                onClick={onClose} 
-                className="absolute top-4 right-4 p-2 hover:bg-black/5 rounded-full transition-colors text-ink-muted hover:text-ink-main"
-            >
-                <X size={20} strokeWidth={1.5} />
-            </button>
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 hover:bg-black/5 rounded-full transition-colors text-ink-muted hover:text-ink-main"
+          >
+            <X size={20} strokeWidth={1.5} />
+          </button>
 
-            <div className="text-center space-y-4 pt-2">
-                <div className="w-16 h-16 mx-auto bg-white rounded-2xl flex items-center justify-center shadow-card mb-2 border border-gray-100 rotate-3">
-                    <LogIn className="w-8 h-8 text-ink-main" />
-                </div>
-                <h2 className="text-2xl font-serif font-bold tracking-tight text-ink-main">
-                    Studio Access
-                </h2>
-                <p className="text-ink-muted text-sm font-sans">
-                    Sign in to sync your Pro status and presets.
-                </p>
+          <div className="text-center space-y-4 pt-2">
+            <div className="w-16 h-16 mx-auto bg-white rounded-2xl flex items-center justify-center shadow-card mb-2 border border-gray-100 rotate-3">
+              <LogIn className="w-8 h-8 text-ink-main" />
             </div>
+            <h2 className="text-2xl font-serif font-bold tracking-tight text-ink-main">
+              Studio Access
+            </h2>
 
-            <button 
-                onClick={handleGoogleLogin}
-                className="w-full bg-white hover:bg-gray-50 text-ink-main font-bold font-sans py-4 rounded-xl shadow-card border border-gray-100 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
-            >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    fill="#EA4335"
-                  />
-                </svg>
-                Continue with Google
-            </button>
+            {reason === 'upgrade' && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 animate-in slide-in-from-top-2">
+                <ShieldCheck size={16} />
+                Please Sign In to Upgrade
+              </div>
+            )}
 
-            <div className="pt-6 border-t border-gray-100 text-center">
-                 <p className="text-[10px] text-ink-muted leading-relaxed flex flex-col items-center gap-2">
-                    <ShieldCheck size={14} className="text-apple-green" />
-                    We only use your account to verify Pro status. We do not track activity or store images. 100% Local Processing.
-                </p>
-            </div>
+            <p className="text-ink-muted text-sm font-sans">
+              Sign in to sync your Pro status and presets.
+            </p>
+          </div>
+
+          <button
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className={`w-full bg-white hover:bg-gray-50 text-ink-main font-bold font-sans py-4 rounded-xl shadow-card border border-gray-100 flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${loading ? 'opacity-70 cursor-wait' : ''}`}
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-ink-main border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  fill="#EA4335"
+                />
+              </svg>
+            )}
+            {loading ? 'Connecting...' : 'Continue with Google'}
+          </button>
+
+          <div className="pt-6 border-t border-gray-100 text-center">
+            <p className="text-[10px] text-ink-muted leading-relaxed flex flex-col items-center gap-2">
+              <ShieldCheck size={14} className="text-apple-green" />
+              We only use your account to verify Pro status. We do not track activity or store images. 100% Local Processing.
+            </p>
+          </div>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const next = searchParams.get('next') || '/';
+  const reason = searchParams.get('reason');
   const { user } = useStore();
 
   useEffect(() => {
@@ -18,7 +19,7 @@ export const Login: React.FC = () => {
   // We reuse the modal UI but centered on a page
   return (
     <div className="min-h-screen bg-paper-base flex items-center justify-center p-4">
-      <LoginModal onClose={() => navigate('/')} />
+      <LoginModal onClose={() => navigate('/')} reason={reason} next={next} />
     </div>
   );
 };

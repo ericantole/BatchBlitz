@@ -5,9 +5,11 @@ import { Checkout } from './pages/Checkout';
 import { Login } from './pages/Login';
 import { Pricing } from './pages/Pricing';
 import { About } from './pages/About';
+import { Thanks } from './pages/Thanks';
 import { useStore } from './store/useStore';
 import { supabase } from './utils/supabase/client';
 import { ToastProvider } from './components/Toast';
+import { AuthRedirectHandler } from './components/AuthRedirectHandler';
 
 const App: React.FC = () => {
   const { setUser, reset } = useStore();
@@ -25,7 +27,7 @@ const App: React.FC = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (_event === 'SIGNED_OUT') {
-          reset();
+        reset();
       }
     });
 
@@ -34,17 +36,19 @@ const App: React.FC = () => {
 
   return (
     <ToastProvider>
-        <HashRouter>
+      <HashRouter>
+        <AuthRedirectHandler />
         <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/login" element={<Login />} />
-            {/* Catch-all route to handle dynamic preview paths or 404s gracefully */}
-            <Route path="*" element={<Home />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/thanks" element={<Thanks />} />
+          <Route path="/login" element={<Login />} />
+          {/* Catch-all route to handle dynamic preview paths or 404s gracefully */}
+          <Route path="*" element={<Home />} />
         </Routes>
-        </HashRouter>
+      </HashRouter>
     </ToastProvider>
   );
 };
