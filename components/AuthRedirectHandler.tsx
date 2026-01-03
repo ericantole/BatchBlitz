@@ -12,15 +12,20 @@ export const AuthRedirectHandler = () => {
         if (user) {
             const redirectPath = localStorage.getItem('batchblitz_redirect');
             if (redirectPath) {
+                // Determine if we need to force reload or just navigate
+                // Use replace to avoid back-button issues
+                navigate(redirectPath, { replace: true });
                 localStorage.removeItem('batchblitz_redirect');
-                navigate(redirectPath);
                 setIsRedirecting(false);
             } else {
                 setIsRedirecting(false);
             }
         } else {
-            // Safety timeout: if auth takes too long or fails, stop showing loader
-            const timer = setTimeout(() => setIsRedirecting(false), 2000);
+            // Safety timeout: give ample time for Supabase to restore session
+            const timer = setTimeout(() => {
+                // Double check session in case store is lagging
+                setIsRedirecting(false);
+            }, 4000);
             return () => clearTimeout(timer);
         }
     }, [user, navigate]);
