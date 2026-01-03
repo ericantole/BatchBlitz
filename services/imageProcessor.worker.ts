@@ -23,10 +23,38 @@ async function processImageInWorker(
     settings: AppSettings
 ): Promise<{ blob: Blob, width: number, height: number }> {
 
-    // 1. Create Bitmap from File (Native Worker API)
+    // 1. Smart Bypass: If no changes are needed, return original file
+    // Condition: Format matches + No Resize + No Watermark + No Signature + Quality is 100%
+    // If quality < 1, user Intends to compress, so we must process.
+
+    // Loose format check (handle jpeg/jpg discrepancy)
+    const targetFormat = settings.convert.format;
+    const fileType = file.type;
+    const isFormatMatch = fileType === targetFormat ||
+        (fileType === 'image/jpeg' && targetFormat === 'image/jpeg') ||
+        (fileType === 'image/jpg' && targetFormat === 'image/jpeg'); // normalize
+
+    const isResizeDisabled = !settings.resize.enabled;
+    const isWatermarkDisabled = !settings.watermark.enabled;
+    const isSignatureDisabled = !settings.signature.enabled;
+    // Treat >=90% as sufficiently high to prefer original if format matches
+    // Also treat PNG as max quality (lossless) regardless of slider value
+    const isMaxQuality = settings.convert.quality >= 0.9 || settings.convert.format === 'image/png';
+
+    if (isFormatMatch && isResizeDisabled && isWatermarkDisabled && isSignatureDisabled && isMaxQuality) {
+        // Return original values immediately
+        const bitmap = await createImageBitmap(file);
+        const originalWidth = bitmap.width;
+        const originalHeight = bitmap.height;
+        bitmap.close();
+
+        return { blob: file instanceof Blob ? file : new Blob([file]), width: originalWidth, height: originalHeight };
+    }
+
+    // 2. Create Bitmap from File (Native Worker API)
     const imgBitmap = await createImageBitmap(file);
 
-    // 2. Calculate Dimensions
+    // 3. Calculate Dimensions
     let targetWidth = imgBitmap.width;
     let targetHeight = imgBitmap.height;
 
@@ -43,7 +71,7 @@ async function processImageInWorker(
         }
     }
 
-    // 3. Create OffscreenCanvas
+    // 4. Create OffscreenCanvas
     const canvas = new OffscreenCanvas(Math.round(targetWidth), Math.round(targetHeight));
     const ctx = canvas.getContext('2d');
 
@@ -51,12 +79,12 @@ async function processImageInWorker(
         throw new Error('Could not get OffscreenCanvas context');
     }
 
-    // 4. Draw & Resize
+    // 5. Draw & Resize
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(imgBitmap, 0, 0, canvas.width, canvas.height);
 
-    // 5. Watermark Application
+    // 6. Watermark Application
     if (settings.watermark.enabled) {
         const { mode, text, color, opacity, fontSize, position, imageData, scale } = settings.watermark;
 
@@ -112,7 +140,7 @@ async function processImageInWorker(
         ctx.restore();
     }
 
-    // 6. Signature Application
+    // 7. Signature Application
     if (settings.signature.enabled && settings.signature.imageData) {
         try {
             // Load signature image
@@ -141,7 +169,7 @@ async function processImageInWorker(
         }
     }
 
-    // 6. Convert to Blob
+    // 8. Convert to Blob
     const mimeType = settings.convert.format;
     const quality = settings.convert.quality;
 

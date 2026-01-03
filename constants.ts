@@ -27,7 +27,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   convert: {
     format: OutputFormat.JPG,
-    quality: 0.9,
+    quality: 0.95, // Standard high quality (prevents 100% bloat)
   },
   rename: {
     enabled: false,

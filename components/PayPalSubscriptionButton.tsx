@@ -1,60 +1,73 @@
+
 import React from 'react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
-import { supabase } from '../utils/supabase/client';
-import { getEnv } from '../utils/env';
 import { useStore } from '../store/useStore';
+import { supabase } from '../utils/supabase/client';
+import { useToast } from './Toast';
+import { useNavigate } from 'react-router-dom';
+
+const CLIENT_ID = 'Ab00wJTTtdTA3Fe2R_oy5Wv0vrUTts4p9aqybdyhPyjy-NMQwKyn7nVn0eKDkhOx2VLVikNaPEXSp_75';
+const PLAN_ID = 'P-22D04505AG394432VNFET4OY';
 
 export const PayPalSubscriptionButton: React.FC = () => {
   const { user, setPro } = useStore();
-  const clientId = getEnv('NEXT_PUBLIC_PAYPAL_CLIENT_ID');
-  const planId = getEnv('NEXT_PUBLIC_PAYPAL_PLAN_ID');
-
-  const handleApprove = async (data: any) => {
-    if (!user) return;
-
-    // 1. Update Local State immediately for UX
-    setPro(true);
-    alert("Payment Successful! Welcome to BatchBlitz Pro.");
-
-    // 2. Update Database
-    // In a real production app, you should use a Supabase Edge Function to verify this securely.
-    // For this implementation, we update the table directly from the client.
-    try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .upsert({
-          user_id: user.id,
-          status: 'active',
-          paypal_sub_id: data.subscriptionID,
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // +30 days
-        });
-
-      if (error) console.error('Error updating subscription:', error);
-    } catch (err) {
-      console.error('Subscription DB Error:', err);
-    }
-  };
+  const { showToast } = useToast();
+  const navigate = useNavigate();
 
   return (
-    <div className="w-full max-w-[300px] mx-auto relative z-10">
-      <PayPalScriptProvider options={{ 
-          clientId: clientId, 
-          vault: true, 
-          intent: 'subscription' 
+    <div className="w-full relative z-0">
+      <PayPalScriptProvider options={{
+        clientId: CLIENT_ID,
+        intent: 'subscription',
+        vault: true,
       }}>
-        <PayPalButtons 
-          style={{ 
-            shape: 'rect', 
-            color: 'gold', 
-            layout: 'vertical', 
-            label: 'subscribe' 
+        <PayPalButtons
+          style={{
+            shape: 'rect',
+            color: 'gold',
+            layout: 'vertical',
+            label: 'subscribe'
           }}
           createSubscription={(data, actions) => {
             return actions.subscription.create({
-              'plan_id': planId
+              plan_id: PLAN_ID
             });
           }}
-          onApprove={handleApprove}
+          onApprove={async (data, actions) => {
+            // 1. Show UI Success immediately
+            showToast('Subscription successful! Unlocking Pro...', 'success');
+
+            // 2. Update Database
+            if (user) {
+              const { error } = await supabase
+                .from('profiles')
+                .update({
+                  is_pro: true,
+                  subscription_id: data.subscriptionID,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', user.id);
+
+              if (error) {
+                console.error('DB Update Failed:', error);
+                // Fallback: Still enable locally so user isn't blocked, 
+                // but admin should investigate failures.
+                showToast('Account updated locally. Please contact support if issues persist.', 'success');
+              }
+            }
+
+            // 3. Update Local State
+            setPro(true);
+
+            // 4. Redirect
+            setTimeout(() => {
+              navigate('/thanks');
+            }, 1000);
+          }}
+          onError={(err) => {
+            console.error('PayPal Error:', err);
+            showToast('Payment failed. Please try again.', 'error');
+          }}
         />
       </PayPalScriptProvider>
     </div>

@@ -12,21 +12,111 @@ import { DEFAULT_SETTINGS, MAX_FREE_FILES } from '../constants';
 import { ImageFile, ImageStatus, AppSettings } from '../types';
 import { processImage } from '../services/imageProcessor';
 import { normalizeImageFile } from '../utils/imageUtils';
-import { Download, Eraser, Trash2, Lock, X, Settings2, Package, RefreshCw, Play, Check, Plus } from 'lucide-react';
+import { Download, Eraser, Trash2, Lock, X, Settings2, Package, RefreshCw, Play, Check, Plus, Star } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import JSZip from 'jszip';
 
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
+// Professional Reviews Data
+const REVIEWS = [
+    { name: "Elara Vance", role: "Etsy Jewelry Shop Owner", text: "Resizing 200 product photos for my shop used to take all day. With BatchBlitz, my listings look uniform instantly.", img: "/avatars/avatar_elara.png", rating: 5.0 },
+    { name: "Kaelen Thorne", role: "ML Engineer @ TechStart", text: "Preprocessing 5,000 images for a vision dataset without uploading them? This is a privacy dream for sensitive data.", img: "/avatars/avatar_kaelen.png", rating: 5.0 },
+    { name: "Marisol Vega", role: "Print-on-Demand Artist", text: "I watermark designs for my Redbubble & Teespring stores in seconds. Essential protection for my art.", img: "/avatars/avatar_marisol.png", rating: 4.8 },
+    { name: "Brynn Harper", role: "Amazon KDP Creator", text: "Formatting 100 book covers for Kindle Direct Publishing used to remain a nightmare. Now it's a 5-minute coffee break.", img: "/avatars/avatar_brynn.png", rating: 4.9 },
+    { name: "Dr. Silas Mercer", role: "University Researcher", text: "Organizing field research photos securely on my device. Perfect for maintaining data compliance standards.", img: "/avatars/avatar_silas.png", rating: 4.9 },
+    { name: "Oren Pikes", role: "Indie SaaS Founder", text: "The privacy-first approach is huge. I use it to batch-process user assets for my own app without liability.", img: "/avatars/avatar_oren.png", rating: 5.0 },
+    { name: "Jaxon Kade", role: "Wedding Studio Lead", text: "We deliver 800+ photos per client. The custom watermark workflow is actually faster than Lightroom for quick proofs.", img: "/avatars/avatar_jaxon.png", rating: 4.7 },
+];
+
+const HomeReviews = () => {
+    const [index, setIndex] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setIndex((prev) => (prev + 1) % REVIEWS.length);
+        }, 5000); // Faster swap for better engagement
+        return () => clearInterval(timer);
+    }, []);
+
+    const review = REVIEWS[index];
+
+    return (
+        <div className="w-full max-w-[480px] mx-auto mt-6 mb-24 flex flex-col items-center gap-2 relative z-0">
+            {/* Trust Header */}
+            <div className="flex items-center justify-center gap-4 opacity-60 w-full mb-2">
+                <div className="h-[1px] w-6 bg-ink-muted"></div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-muted whitespace-nowrap">
+                    Trusted by Creators
+                </p>
+                <div className="h-[1px] w-6 bg-ink-muted"></div>
+            </div>
+
+            {/* Universal Auto-Swiping Card (Mobile & Desktop) */}
+            <div className="w-full relative perspective-1000">
+                {/* Stack Effect: Next Card Peeking Behind - Reduced Size */}
+                <div className="absolute top-0 w-full h-full bg-[#1a1a1ae6]/40 backdrop-blur-sm rounded-3xl border border-white/5 transform translate-x-2 translate-y-2 -rotate-2 z-0 scale-[0.92] origin-center shadow-lg transition-transform duration-500"></div>
+                <div className="absolute top-0 w-full h-full bg-[#1a1a1ae6]/20 backdrop-blur-sm rounded-3xl border border-white/5 transform translate-x-4 translate-y-4 -rotate-3 z-[-1] scale-[0.85] origin-center shadow-md transition-transform duration-500"></div>
+
+                <div
+                    key={index}
+                    className="relative z-10 bg-[#1a1a1ae6] backdrop-blur-md p-4 rounded-3xl shadow-2xl border border-white/10 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-500 fill-mode-forwards text-center min-h-[120px]"
+                >
+                    {/* 1. Stars at Top */}
+                    <div className="flex gap-1 justify-center items-center">
+                        <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map(star => (
+                                <Star
+                                    key={star}
+                                    size={13}
+                                    className={`${star <= Math.round(review.rating) ? "text-white fill-current" : "text-white/30"} drop-shadow-md`}
+                                />
+                            ))}
+                        </div>
+                        <span className="text-[10px] font-bold text-white/60 ml-1.5">({review.rating})</span>
+                    </div>
+
+                    {/* 2. Review Text */}
+                    <p className="text-[12px] text-white/95 leading-relaxed font-medium tracking-wide px-1">
+                        "{review.text}"
+                    </p>
+
+                    {/* 3. User Profile at Bottom (No irregular gap) */}
+                    <div className="flex items-center justify-center gap-3 text-left pt-1 mt-auto">
+                        <img
+                            src={review.img}
+                            alt={review.name}
+                            className="w-7 h-7 rounded-full object-cover shadow-sm ring-2 ring-white/10"
+                        />
+                        <div>
+                            <h3 className="font-bold text-white text-[11px] leading-tight">{review.name}</h3>
+                            <p className="text-[9px] text-white/50 uppercase tracking-widest font-semibold">{review.role}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Progress Lines Below Card (Now in normal flow, visible everywhere) */}
+            <div className="flex justify-center gap-2 w-full mt-4">
+                {REVIEWS.map((_, i) => (
+                    <div
+                        key={i}
+                        className={`h-1.5 rounded-full transition-all duration-500 ${i === index ? 'w-8 bg-ink-main' : 'w-2 bg-ink-muted/30'}`}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // Re-implemented Marquee Component
 const Ticker = () => (
-    <div className="fixed bottom-0 w-full h-10 bg-white/80 backdrop-blur-md border-t border-ink-muted/10 flex items-center overflow-hidden z-10 pointer-events-none">
+    <div className="fixed bottom-0 w-full h-10 bg-white/80 backdrop-blur-md border-t border-ink-muted/10 flex items-center overflow-hidden z-50 pointer-events-none">
         <div className="animate-scroll whitespace-nowrap flex gap-16 text-[11px] font-medium tracking-[0.2em] text-ink-muted uppercase">
             <span>No Servers</span>
             <span>Local Processing</span>
             <span>HEIC Support</span>
-            <span>Batch Resize</span>
             <span>100% Privacy</span>
             <span>Client-Side</span>
             <span>No Uploads</span>
@@ -34,7 +124,6 @@ const Ticker = () => (
             <span>No Servers</span>
             <span>Local Processing</span>
             <span>HEIC Support</span>
-            <span>Batch Resize</span>
             <span>100% Privacy</span>
             <span>Client-Side</span>
             <span>No Uploads</span>
@@ -44,10 +133,11 @@ const Ticker = () => (
 );
 
 export const Home: React.FC = () => {
-    const { user, isPro, togglePro } = useStore();
+    const { user, isPro } = useStore();
     const [images, setImages] = useState<ImageFile[]>([]);
     const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [selectedImage, setSelectedImage] = useState<ImageFile | null>(null);
+    const [previewMode, setPreviewMode] = useState<'general' | 'placement'>('general');
 
     // State Machine Logic
     const [isProcessing, setIsProcessing] = useState(false);
@@ -66,6 +156,7 @@ export const Home: React.FC = () => {
     useEffect(() => {
         const handleOpenPreview = () => {
             if (images.length > 0) {
+                setPreviewMode('general'); // Default to general preview
                 setSelectedImage(images[0]);
             } else {
                 // Optional: Show toast "Add an image first"
@@ -75,6 +166,37 @@ export const Home: React.FC = () => {
         window.addEventListener('open-preview', handleOpenPreview);
         return () => window.removeEventListener('open-preview', handleOpenPreview);
     }, [images]);
+
+    // Listen for Tally Submission to disable future popups
+    useEffect(() => {
+        const handleTallyEvent = (e: MessageEvent) => {
+            if (e.data && typeof e.data === 'string' && e.data.includes('Tally.FormSubmitted')) {
+                console.log("User submitted feedback! Disabling future popups.");
+                localStorage.setItem('batchblitz_has_voted', 'true');
+            }
+            // Tally sometimes sends objects
+            if (e.data && e.data.event === 'Tally.FormSubmitted') {
+                console.log("User submitted feedback! Disabling future popups.");
+                localStorage.setItem('batchblitz_has_voted', 'true');
+            }
+        };
+        window.addEventListener('message', handleTallyEvent);
+        return () => window.removeEventListener('message', handleTallyEvent);
+    }, []);
+
+    // Load Tally Script on Mount
+    useEffect(() => {
+        const scriptId = 'tally-embed-script';
+        if (!document.getElementById(scriptId)) {
+            const script = document.createElement('script');
+            script.id = scriptId;
+            script.src = "https://tally.so/widgets/embed.js";
+            script.async = true;
+            script.onload = () => console.log("Tally Script Loaded");
+            script.onerror = (e) => console.error("Tally Script Failed", e);
+            document.head.appendChild(script);
+        }
+    }, []);
 
 
     // Monitor Settings for Dirty State
@@ -97,12 +219,22 @@ export const Home: React.FC = () => {
                 const path = rawPath ? rawPath.substring(0, rawPath.lastIndexOf('/') + 1) : '';
 
                 const normalized = await normalizeImageFile(file);
+
+                // Extract dimensions
+                const dimensions = await new Promise<{ width: number, height: number }>((resolve) => {
+                    const img = new Image();
+                    img.onload = () => resolve({ width: img.width, height: img.height });
+                    img.onerror = () => resolve({ width: 0, height: 0 });
+                    img.src = URL.createObjectURL(normalized);
+                });
+
                 return {
                     id: generateId(),
                     file: normalized,
                     path: path, // Store the folder structure
                     previewUrl: URL.createObjectURL(normalized),
-                    status: ImageStatus.IDLE
+                    status: ImageStatus.IDLE,
+                    originalDimensions: dimensions
                 };
             })
         );
@@ -213,6 +345,64 @@ export const Home: React.FC = () => {
 
         setIsProcessing(false);
         setIsCompleted(true);
+
+
+
+
+
+
+        // --- SMART TALLY FEEDBACK LOGIC ---
+        console.log("Batch complete. Checking Tally Logic...");
+
+        // 1. Check if user already voted
+        const hasVoted = localStorage.getItem('batchblitz_has_voted') === 'true';
+        if (hasVoted) {
+            console.log("User already voted. Skipping feedback.");
+            return;
+        }
+
+        // 2. Increment Batch Count
+        const currentBatchCount = parseInt(localStorage.getItem('batchblitz_batch_count') || '0', 10) + 1;
+        localStorage.setItem('batchblitz_batch_count', currentBatchCount.toString());
+
+        // 3. Check Milestone (1st, 10th, 50th, 100th)
+        const FEEDBACK_MILESTONES = [1, 10, 50, 100];
+
+        if (FEEDBACK_MILESTONES.includes(currentBatchCount)) {
+            console.log(`Milestone reached (${currentBatchCount}). Triggering Tally...`);
+
+            const openTally = () => {
+                // @ts-ignore
+                if (window.Tally) {
+                    // @ts-ignore
+                    window.Tally.openPopup('5B4ObE', {
+                        layout: 'modal',
+                        width: 400,
+                        emoji: { text: '👋', animation: 'wave' },
+                        autoClose: 2000,
+                        hiddenFields: {
+                            processed_count: images ? images.length : 0,
+                            plan: isPro ? 'Pro' : 'Free',
+                            user_id: user ? user.id : 'anonymous',
+                            batch_milestone: currentBatchCount
+                        }
+                    });
+                }
+            };
+
+            const scriptSrc = "https://tally.so/widgets/embed.js";
+            if (!document.querySelector(`script[src="${scriptSrc}"]`)) {
+                const script = document.createElement('script');
+                script.src = scriptSrc;
+                script.async = true;
+                script.onload = () => setTimeout(openTally, 500);
+                document.head.appendChild(script);
+            } else {
+                setTimeout(openTally, 1000);
+            }
+        } else {
+            console.log(`Batch ${currentBatchCount} is not a feedback milestone. Skipping.`);
+        }
     };
 
     const getNewFilename = (originalName: string, index: number) => {
@@ -323,18 +513,7 @@ export const Home: React.FC = () => {
             {/* Ticker - Only visible when NO images */}
             {!hasImages && <Ticker />}
 
-            {/* Dev Mode Badge (Clickable Toggle) */}
-            <button
-                onClick={togglePro}
-                className={`
-            fixed bottom-12 left-2 z-[100] border backdrop-blur-md px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 hidden md:flex transition-all hover:scale-105 active:scale-95
-            ${isPro
-                        ? 'bg-accent-gold/10 border-accent-gold/20 text-accent-gold'
-                        : 'bg-gray-200/50 border-gray-300/50 text-gray-500'}
-        `}
-            >
-                <Lock size={10} /> {isPro ? 'DEV: PRO ENABLED' : 'DEV: FREE MODE'}
-            </button>
+
 
             {/* Add More FAB */}
             {hasImages && (
@@ -374,11 +553,11 @@ export const Home: React.FC = () => {
                 </>
             )}
 
-            <div className="flex-1 relative flex flex-col h-screen overflow-hidden pt-20" id="editor">
+            <div className="flex-1 relative flex flex-col h-screen overflow-hidden pt-16 md:pt-0" id="editor">
 
                 {/* Empty State */}
                 {!hasImages && (
-                    <div className="flex-1 flex flex-col items-center justify-center p-6 z-20 overflow-y-auto">
+                    <div className="flex-1 flex flex-col items-center justify-center md:justify-start md:pt-24 p-6 z-20 overflow-y-auto w-full max-w-4xl mx-auto">
                         <Dropzone onFilesDropped={(files) => {
                             // Double check enforcement
                             if (settings.signature.enabled && settings.signature.mode === 'single' && files.length > 1) {
@@ -388,22 +567,29 @@ export const Home: React.FC = () => {
                                 handleFilesDropped(files);
                             }
                         }} />
+
+                        {/* Auto Sliding Reviews */}
+                        <HomeReviews />
                     </div>
                 )}
 
                 {/* Studio Workspace */}
                 {hasImages && (
-                    <div className="flex w-full h-full relative pb-20 md:pb-0">
+                    <div className="flex w-full h-full relative pb-20 md:pb-0 md:pt-20">
 
                         {/* Main Canvas Area */}
                         <div className="flex-1 h-full overflow-hidden relative flex flex-col">
 
                             {/* Image Grid Scroll Area */}
-                            <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 no-scrollbar pb-32">
+                            <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 pt-4 no-scrollbar pb-32">
                                 <ImageGrid
+
                                     images={images}
                                     onRemove={handleRemoveImage}
-                                    onSelect={setSelectedImage}
+                                    onSelect={(img) => {
+                                        setPreviewMode('general');
+                                        setSelectedImage(img);
+                                    }}
                                     selectedIds={selectedIds}
                                     onToggleSelection={handleToggleSelection}
                                 />
@@ -448,6 +634,12 @@ export const Home: React.FC = () => {
                                 isPro={isPro}
                                 onShowPaywall={() => setShowPaywall(true)}
                                 onShowSecurity={() => setShowSecurity(true)}
+                                onPlacementStart={() => {
+                                    if (images.length > 0) {
+                                        setPreviewMode('placement');
+                                        setSelectedImage(images[0]);
+                                    }
+                                }}
                                 // State Machine Props
                                 onProcess={processBatch}
                                 isProcessing={isProcessing}
@@ -455,6 +647,28 @@ export const Home: React.FC = () => {
                                 hasImages={hasImages}
                                 isCompleted={isCompleted}
                             />
+                        </div>
+
+                        {/* Mobile Add More FAB (Above Dock) */}
+                        {/* Mobile Add More FAB (Above Dock) */}
+                        <input
+                            type="file"
+                            multiple
+                            className="hidden"
+                            ref={fabInputRef}
+                            onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                    handleFilesDropped(Array.from(e.target.files));
+                                }
+                            }}
+                        />
+                        <div className="md:hidden fixed bottom-[118px] right-4 z-[60] animate-in slide-in-from-bottom-2">
+                            <button
+                                onClick={() => fabInputRef.current?.click()}
+                                className="w-14 h-14 bg-black text-white rounded-full shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+                            >
+                                <Plus size={24} strokeWidth={3} />
+                            </button>
                         </div>
 
                         {/* Mobile Dock (Fixed Bottom) */}
@@ -509,6 +723,14 @@ export const Home: React.FC = () => {
                                             isPro={isPro}
                                             onShowPaywall={() => setShowPaywall(true)}
                                             onShowSecurity={() => setShowSecurity(true)}
+
+                                            onPlacementStart={() => {
+                                                setIsMobileSettingsOpen(false);
+                                                if (images.length > 0) {
+                                                    setPreviewMode('placement');
+                                                    setSelectedImage(images[0]);
+                                                }
+                                            }}
                                             // State Machine Props
                                             onProcess={() => {
                                                 setIsMobileSettingsOpen(false); // Close drawer to show process
@@ -533,6 +755,7 @@ export const Home: React.FC = () => {
                     settings={settings}
                     updateSettings={setSettings}
                     onClose={() => setSelectedImage(null)}
+                    mode={previewMode}
                 />
             )}
             {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}

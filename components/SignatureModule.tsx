@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { PenTool, Upload, MousePointer2, Layers, AlertCircle, X, Check } from 'lucide-react';
+import { PenTool, Upload, MousePointer2, Layers, AlertCircle, X, Check, Move } from 'lucide-react';
 import { AppSettings } from '../types';
 import { InfoTooltip } from './InfoTooltip';
 
@@ -8,13 +8,15 @@ interface SignatureModuleProps {
     updateSettings: (newSettings: AppSettings) => void;
     isPro: boolean;
     onShowPaywall: () => void;
+    onPlacementStart?: () => void;
 }
 
 export const SignatureModule: React.FC<SignatureModuleProps> = ({
     settings,
     updateSettings,
     isPro,
-    onShowPaywall
+    onShowPaywall,
+    onPlacementStart
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
@@ -33,16 +35,24 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
         });
     };
 
+    // Helper to update image AND reset position
+    const updateSignatureImage = (dataUrl: string | null) => {
+        updateSettings({
+            ...settings,
+            signature: {
+                ...settings.signature,
+                imageData: dataUrl,
+                position: { x: 50, y: 50 } // Always reset to center on new input
+            }
+        });
+    };
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!isPro) {
-            onShowPaywall();
-            return;
-        }
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = (event) => {
-                handleSignatureChange('imageData', event.target?.result as string);
+                updateSignatureImage(event.target?.result as string);
             };
             reader.readAsDataURL(file);
         }
@@ -108,14 +118,15 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
         if (!ctx) return;
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
         // Force reset
-        handleSignatureChange('imageData', null);
+        updateSignatureImage(null);
     };
 
     const saveCanvas = () => {
         const canvas = canvasRef.current;
         if (canvas) {
             const dataUrl = canvas.toDataURL('image/png');
-            handleSignatureChange('imageData', dataUrl);
+            // We use the helper to ensuring centering
+            updateSignatureImage(dataUrl);
         }
     };
 
@@ -212,7 +223,7 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
                     ) : (
                         <label className={`
                             flex flex-col items-center justify-center w-full h-32 border border-dashed rounded-lg cursor-pointer bg-white transition-colors
-                            ${isPro ? 'border-gray-300 hover:bg-gray-50' : 'border-gray-200 opacity-50 cursor-not-allowed'}
+                            border-gray-300 hover:bg-gray-50
                         `}>
                             {settings.signature.imageData ? (
                                 <img src={settings.signature.imageData} alt="Signature" className="h-full object-contain p-4" />
@@ -223,8 +234,7 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
                                     <p className="text-[10px] text-gray-400 mt-1">Transparent background recommended</p>
                                 </div>
                             )}
-                            <input type="file" className="hidden" accept="image/png" onChange={handleImageUpload} disabled={!isPro} />
-                            {!isPro && <div className="absolute inset-0 flex items-center justify-center bg-white/60 font-bold text-xs text-ink-muted">PRO ONLY</div>}
+                            <input type="file" className="hidden" accept="image/png" onChange={handleImageUpload} />
                         </label>
                     )}
 
@@ -250,16 +260,12 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
                         <button
                             className="w-full py-3 bg-ink-main text-white rounded-lg text-xs font-bold uppercase tracking-wide shadow-md hover:translate-y-px active:translate-y-0.5 transition-all flex items-center justify-center gap-2"
                             onClick={() => {
-                                // This button is a visual cue mostly, the actual logic resides
-                                // in dragging on the preview. But we could wire it to open the preview.
-                                // For now, the user instruction is to just click "Place Sign".
-                                // We will let the Home component handle the opening of preview.
-                                const event = new CustomEvent('open-preview');
-                                window.dispatchEvent(event);
+                                // Trigger Placement Mode via prop
+                                if (onPlacementStart) onPlacementStart();
                             }}
                         >
-                            <MousePointer2 size={16} />
-                            Place Sign
+                            <Move size={16} />
+                            Place Signature
                         </button>
                         <p className="text-[10px] text-center text-ink-muted mt-2">
                             Click to open draggable preview

@@ -8,7 +8,59 @@ interface DropzoneProps {
 
 // Helper to safely access webkitRelativePath
 const getFilePath = (file: File): string => {
-    return (file as any).webkitRelativePath || '';
+  return (file as any).webkitRelativePath || '';
+};
+
+
+
+const PHRASES = ["Etsy Sellers", "Data Scientists", "Photo Studios", "Amazon KDP Creators", "Students & Educators", "Print-on-Demand Sellers", "ML/AI Trainers"];
+
+const TypewriterBadge = () => {
+  const [index, setIndex] = useState(0);
+  const [subIndex, setSubIndex] = useState(0);
+  const [reverse, setReverse] = useState(false);
+  const [blink, setBlink] = useState(true);
+
+  // Blinking cursor effect
+  React.useEffect(() => {
+    const timeout2 = setInterval(() => {
+      setBlink((prev) => !prev);
+    }, 500);
+    return () => clearInterval(timeout2);
+  }, []);
+
+  // Typing effect
+  React.useEffect(() => {
+    if (subIndex === PHRASES[index].length + 1 && !reverse) {
+      const timeout = setTimeout(() => setReverse(true), 3000); // 3s wait before deleting
+      return () => clearTimeout(timeout);
+    }
+
+    if (subIndex === 0 && reverse) {
+      setReverse(false);
+      setIndex((prev) => (prev + 1) % PHRASES.length);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setSubIndex((prev) => prev + (reverse ? -1 : 1));
+    }, reverse ? 50 : 100); // Typing speed vs deleting speed
+
+    return () => clearTimeout(timeout);
+  }, [subIndex, index, reverse]);
+
+  return (
+    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-100 bg-white/50 backdrop-blur-sm shadow-sm mb-1">
+      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+      <span className="text-[10px] md:text-xs font-medium text-ink-muted">
+        #1 Private Batch Tool for{" "}
+        <span className="text-ink-main font-bold">
+          {PHRASES[index].substring(0, subIndex)}
+        </span>
+        <span className={`${blink ? "opacity-100" : "opacity-0"} text-accent-gold font-bold ml-px`}>|</span>
+      </span>
+    </div>
+  );
 };
 
 export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = false }) => {
@@ -28,14 +80,14 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     // Recursive file extraction could be added here for drag-and-drop folders,
     // but standard File API often flattens drag events unless using FileSystemEntry API.
     // For now, we handle flat file drops and specific folder input selection.
-    const droppedFiles = Array.from(e.dataTransfer.files).filter((file: File) => 
+    const droppedFiles = Array.from(e.dataTransfer.files).filter((file: File) =>
       file.type.startsWith('image/')
     );
-    
+
     if (droppedFiles.length > 0) {
       onFilesDropped(droppedFiles);
     }
@@ -43,7 +95,7 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const files = Array.from(e.target.files).filter((file: File) => 
+      const files = Array.from(e.target.files).filter((file: File) =>
         file.type.startsWith('image/')
       );
       if (files.length > 0) onFilesDropped(files);
@@ -51,29 +103,29 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
   };
 
   const handleFolderClick = () => {
-      if (folderInputRef.current) {
-          folderInputRef.current.click();
-      }
+    if (folderInputRef.current) {
+      folderInputRef.current.click();
+    }
   };
 
   if (compact) {
     return (
-      <div 
+      <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`
           relative group transition-all duration-300 overflow-hidden
           rounded-sm p-4 text-center cursor-pointer shadow-pressed backdrop-blur-sm
-          ${isDragging 
-            ? 'bg-paper-dark/50' 
+          ${isDragging
+            ? 'bg-paper-dark/50'
             : 'bg-paper-dark/20 hover:bg-paper-dark/40'}
         `}
       >
-        <input 
-          type="file" 
-          multiple 
-          accept="image/*" 
+        <input
+          type="file"
+          multiple
+          accept="image/*"
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
           onChange={handleFileInput}
         />
@@ -86,21 +138,24 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
   }
 
   return (
-    <div className="w-full flex flex-col items-center justify-center space-y-12 animate-in fade-in zoom-in duration-500">
-      
+    <div className="w-full flex flex-col items-center justify-center space-y-6 animate-in fade-in zoom-in duration-500">
+
       {/* Hero Text */}
-      <div className="text-center space-y-4">
+      <div className="text-center space-y-2">
+
+        <TypewriterBadge />
+
         <h1 className="text-6xl md:text-8xl font-serif font-bold text-ink-main drop-shadow-sm tracking-tighter">
           BatchBlitz
         </h1>
         <p className="text-lg md:text-xl text-ink-muted font-light max-w-2xl mx-auto text-center font-serif italic">
-          The studio for your images. 
-          <span className="text-ink-main ml-2 font-medium opacity-80 font-sans not-italic">Local. Private. Fast.</span>
+          The studio for your images. <br className="md:hidden" />
+          <span className="text-ink-main ml-0 md:ml-2 font-medium opacity-80 font-sans not-italic">Local. Private. Fast.</span>
         </p>
       </div>
 
       {/* Indented Dropzone */}
-      <div 
+      <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -108,33 +163,33 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
           relative w-full max-w-4xl mx-auto transition-all duration-500 ease-out transform
           min-h-[320px] flex flex-col items-center justify-center backdrop-blur-sm
           rounded-sm bg-paper-dark/30 shadow-pressed
-          ${isDragging 
-            ? 'shadow-[inset_4px_4px_10px_rgba(0,0,0,0.1),inset_-4px_-4px_10px_rgba(255,255,255,0.9)] bg-paper-dark/50' 
+          ${isDragging
+            ? 'shadow-[inset_4px_4px_10px_rgba(0,0,0,0.1),inset_-4px_-4px_10px_rgba(255,255,255,0.9)] bg-paper-dark/50'
             : 'hover:shadow-[inset_3px_3px_8px_rgba(0,0,0,0.08),inset_-3px_-3px_8px_rgba(255,255,255,0.9)]'}
         `}
       >
         {/* Standard File Input (Overlay) */}
-        <input 
-          type="file" 
-          multiple 
-          accept="image/*" 
+        <input
+          type="file"
+          multiple
+          accept="image/*"
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           onChange={handleFileInput}
-          title="" 
+          title=""
         />
-        
+
         {/* Folder Input (Hidden, triggered by button) */}
         <input
-            type="file"
-            ref={folderInputRef}
-            // @ts-ignore - Non-standard attribute for folder selection
-            webkitdirectory="" 
-            directory=""
-            multiple
-            className="hidden"
-            onChange={handleFileInput}
+          type="file"
+          ref={folderInputRef}
+          // @ts-ignore - Non-standard attribute for folder selection
+          webkitdirectory=""
+          directory=""
+          multiple
+          className="hidden"
+          onChange={handleFileInput}
         />
-        
+
         <div className="flex flex-col items-center justify-center text-center pointer-events-none p-8 space-y-8 relative z-0">
           <div className={`
             relative w-24 h-24 flex items-center justify-center rounded-full
@@ -149,29 +204,29 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
               {isDragging ? "Release to Import" : "Drop Photos or Folders Here"}
             </h2>
             <div className="flex gap-4 justify-center text-xs text-ink-muted font-medium tracking-widest uppercase">
-                <span>JPG</span>
-                <span>PNG</span>
-                <span>WEBP</span>
-                <span>HEIC</span>
+              <span>JPG</span>
+              <span>PNG</span>
+              <span>WEBP</span>
+              <span>HEIC</span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4 pointer-events-auto relative z-20">
-              <button className="px-6 py-3 bg-white border border-white rounded-sm text-ink-main text-sm font-bold tracking-wide shadow-card hover:-translate-y-0.5 transition-all flex items-center gap-2">
-                <ImagePlus size={16} />
-                Select Files
-              </button>
-              <button 
-                onClick={(e) => {
-                    e.stopPropagation(); // Prevent triggering the parent dropzone click
-                    e.preventDefault();
-                    handleFolderClick();
-                }}
-                className="px-6 py-3 bg-paper-base border border-white/50 rounded-sm text-ink-muted hover:text-ink-main text-sm font-bold tracking-wide shadow-card hover:-translate-y-0.5 transition-all flex items-center gap-2"
-              >
-                <FolderPlus size={16} />
-                Select Folder
-              </button>
+            <button className="px-6 py-3 bg-white border border-white rounded-sm text-ink-main text-sm font-bold tracking-wide shadow-card hover:-translate-y-0.5 transition-all flex items-center gap-2">
+              <ImagePlus size={16} />
+              Select Files
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent triggering the parent dropzone click
+                e.preventDefault();
+                handleFolderClick();
+              }}
+              className="px-6 py-3 bg-paper-base border border-white/50 rounded-sm text-ink-muted hover:text-ink-main text-sm font-bold tracking-wide shadow-card hover:-translate-y-0.5 transition-all flex items-center gap-2"
+            >
+              <FolderPlus size={16} />
+              Select Folder
+            </button>
           </div>
         </div>
       </div>

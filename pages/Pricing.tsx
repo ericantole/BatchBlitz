@@ -12,14 +12,12 @@ export const Pricing: React.FC = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
 
-    const handleDevUpgrade = () => {
+    const handleUpgrade = () => {
         if (!user) {
             navigate('/login?next=/checkout&reason=upgrade');
             return;
         }
-        setPro(true);
-        showToast("Dev Mode: You are now a Pro user!", "success");
-        navigate('/');
+        navigate('/checkout');
     };
 
     return (
@@ -116,7 +114,7 @@ export const Pricing: React.FC = () => {
                                         <Button variant="secondary" fullWidth onClick={() => navigate('/')}>Return to Studio</Button>
                                     ) : (
                                         <button
-                                            onClick={handleDevUpgrade}
+                                            onClick={handleUpgrade}
                                             className="group relative w-full h-16 rounded-xl overflow-hidden bg-gradient-to-r from-yellow-600 via-accent-gold to-yellow-500 bg-[length:200%_auto] hover:bg-[position:right_center] transition-all duration-500 shadow-xl shadow-accent-gold/20 hover:shadow-accent-gold/40 border border-white/20 active:scale-[0.98]"
                                         >
                                             <div className="absolute inset-0 bg-white/20 group-hover:opacity-0 transition-opacity duration-500" />

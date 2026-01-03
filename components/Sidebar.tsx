@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Image as ImageIcon, Type, Zap, ChevronDown, ChevronRight, Lock, Upload, FileEdit, Check, X, Sliders, Play, RefreshCw, Save, PenTool } from 'lucide-react';
+import { Image as ImageIcon, Type, Zap, ChevronDown, ChevronRight, ChevronLeft, Lock, Upload, FileEdit, Check, X, Sliders, Play, RefreshCw, Save, PenTool, Trash2, Plus, Maximize2, Move, FileSignature } from 'lucide-react';
+import { checkSubscriptionStatus } from '../utils/verification';
 import { AppSettings, OutputFormat } from '../types';
 import { RenameModule } from './RenameModule';
 import { InfoTooltip } from './InfoTooltip';
@@ -23,6 +24,7 @@ interface SidebarProps {
   hasImages: boolean;
   isCompleted: boolean;
   onAddMore?: () => void;
+  onPlacementStart?: () => void;
 }
 
 const AccordionItem: React.FC<{
@@ -96,18 +98,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isDirty,
   hasImages,
   isCompleted,
-  onAddMore
+  onAddMore,
+  onPlacementStart
 }) => {
-  const [openSection, setOpenSection] = useState<string | null>('resize');
+  const [activeView, setActiveView] = useState<'main' | 'resize' | 'rename' | 'signature' | 'watermark' | 'convert'>('main');
   const [isSavingPreset, setIsSavingPreset] = useState(false);
   const [presetName, setPresetName] = useState('');
 
   const { addPreset, setSelectedPresetId } = useStore();
   const { showToast } = useToast();
-
-  const toggleSection = (section: string) => {
-    setOpenSection(openSection === section ? null : section);
-  };
 
   // --- Handlers ---
   const handleResizeChange = (key: keyof typeof settings.resize, value: any) => {
@@ -118,11 +117,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
   const handleConvertChange = (key: keyof typeof settings.convert, value: any) => {
     updateSettings({ ...settings, convert: { ...settings.convert, [key]: value } });
-  };
-  // Signature change handler is not strictly needed here as SignatureModule handles its own internal updates via updateSettings prop, 
-  // but if we expose direct controls here:
-  const handleSignatureChange = (key: keyof typeof settings.signature, value: any) => {
-    updateSettings({ ...settings, signature: { ...settings.signature, [key]: value } });
   };
 
   const handleReset = () => {
@@ -191,22 +185,73 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'bottom-left', 'bottom-center', 'bottom-right'
   ];
 
+  const MenuButton = ({ label, icon: Icon, onClick, active }: any) => (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 group
+      ${active ? 'border-accent-gold/30 bg-accent-gold/5 text-ink-main' : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm text-ink-muted hover:text-ink-main'}`}
+    >
+      <div className="flex items-center gap-3">
+        <Icon size={18} strokeWidth={2} className={`transition-colors ${active ? 'text-accent-gold' : 'text-gray-400 group-hover:text-ink-main'}`} />
+        <span className="font-semibold text-[15px] tracking-wide">{label}</span>
+      </div>
+      <ChevronRight size={16} className={`text-gray-300 group-hover:text-gray-400`} />
+    </button>
+  );
+
+  const { setPro, user } = useStore();
+
+  const handleStartClick = async () => {
+    // SECURITY CHECK: Verify subscription status before running if in Pro mode
+    if (isPro) {
+      if (!user) {
+        showToast("Session invalid. Please sign in.", "error");
+        setPro(false);
+        return;
+      }
+
+      // Silent verification
+      const isValid = await checkSubscriptionStatus(user.id);
+      if (!isValid) {
+        setPro(false);
+        showToast("Verification failed. Free mode restored.", "error");
+        return; // HALT PROCESSING
+      }
+    }
+
+    // If we get here, either free mode or verified pro
+    onProcess();
+  };
+
   return (
     <aside className="
-        w-full md:w-auto h-fit max-h-[calc(100vh-32px)]
+        w-full md:w-[360px] h-full
         flex flex-col 
         bg-white/90 backdrop-blur-sm 
         md:rounded-2xl rounded-none md:shadow-2xl shadow-none 
         md:border border-l border-ink-muted/10 
         md:m-4 m-0 
-        overflow-y-auto no-scrollbar
+        overflow-hidden relative
     ">
 
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-5 bg-white/50 border-b border-gray-100">
+      {/* 1. Fixed Header */}
+      <div className="flex items-center justify-between px-6 py-5 bg-white/50 border-b border-gray-100 flex-none z-10">
         <div className="flex items-center gap-2 text-ink-main">
-          <Sliders size={20} strokeWidth={2} />
-          <span className="font-bold text-lg tracking-tight">Studio Settings</span>
+          {activeView !== 'main' ? (
+            <button onClick={() => setActiveView('main')} className="hover:bg-gray-100 p-1 -ml-2 rounded-lg transition-colors">
+              <ChevronLeft size={20} />
+            </button>
+          ) : (
+            <Sliders size={20} strokeWidth={2} />
+          )}
+          <span className="font-bold text-lg tracking-tight">
+            {activeView === 'main' ? 'Studio Settings' :
+              activeView === 'resize' ? 'Dimensions' :
+                activeView === 'rename' ? 'Rename Files' :
+                  activeView === 'signature' ? 'Digital Sign' :
+                    activeView === 'watermark' ? 'Watermark' : 'Output Format'
+            }
+          </span>
         </div>
         <div className="flex items-center gap-2">
           {!isPro && (
@@ -220,239 +265,222 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      <div className="px-6 pb-6 pt-4">
+      {/* 2. Scrollable Content Area (Drill Down) */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar p-6 bg-white/30 relative">
 
-        {/* Phase 1: Preset Control Bar */}
-        <PresetSelector
-          onSelect={(s) => {
-            updateSettings(s);
-          }}
-          onReset={handleReset}
-          isPro={isPro}
-          onShowPaywall={onShowPaywall || (() => { })}
-        />
-
-        {/* Divider */}
-        <div className="h-px w-full bg-gray-200 mb-6" />
-
-        {/* Resize Module */}
-        <AccordionItem
-          title="Dimensions"
-          icon={ImageIcon}
-          isOpen={openSection === 'resize'}
-          onToggle={() => toggleSection('resize')}
-          active={settings.resize.enabled}
-        >
-          <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-            <div className="flex items-center">
-              <label className="text-sm text-ink-main font-medium">Enable Resize</label>
-              <InfoTooltip content="Scale by percentage (50%) or set a fixed width. Aspect ratio is always preserved." />
-            </div>
-            <AppleToggle
-              checked={settings.resize.enabled}
-              onChange={(val) => handleResizeChange('enabled', val)}
-            />
-          </div>
-
-          <div className={`space-y-4 transition-all duration-300 ${settings.resize.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-            <div className="flex bg-gray-100 p-1 rounded-lg">
-              <button
-                onClick={() => handleResizeChange('type', 'percentage')}
-                className={`flex-1 text-xs py-2 font-bold rounded-md transition-all ${settings.resize.type === 'percentage' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
-              >
-                Scale %
-              </button>
-              <button
-                onClick={() => handleResizeChange('type', 'width')}
-                className={`flex-1 text-xs py-2 font-bold rounded-md transition-all ${settings.resize.type === 'width' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
-              >
-                Width px
-              </button>
-            </div>
-
-            <SynthSlider
-              label="Target Size"
-              displayValue={`${settings.resize.value}${settings.resize.type === 'percentage' ? '%' : 'px'}`}
-              min={settings.resize.type === 'percentage' ? 10 : 100}
-              max={settings.resize.type === 'percentage' ? 200 : 3840}
-              value={settings.resize.value}
-              onChange={(e) => handleResizeChange('value', parseInt(e.target.value))}
-            />
-          </div>
-        </AccordionItem>
-
-        {/* Rename Module */}
-        <AccordionItem
-          title="Rename"
-          icon={FileEdit}
-          isOpen={openSection === 'rename'}
-          onToggle={() => toggleSection('rename')}
-          active={settings.rename?.enabled}
-        >
-          <RenameModule
-            settings={settings}
-            updateSettings={updateSettings}
+        {/* MAIN VIEW */}
+        <div className={`space-y-3 transition-opacity duration-300 ${activeView === 'main' ? 'opacity-100' : 'hidden opacity-0'}`}>
+          <PresetSelector
+            onSelect={(s) => updateSettings(s)}
+            onReset={handleReset}
             isPro={isPro}
             onShowPaywall={onShowPaywall || (() => { })}
           />
-        </AccordionItem>
+          <div className="h-px w-full bg-gray-200/50 my-4" />
 
-        {/* Signature Module */}
-        <AccordionItem
-          title="Sign"
-          icon={PenTool}
-          isOpen={openSection === 'signature'}
-          onToggle={() => toggleSection('signature')}
-          active={settings.signature.enabled}
-        >
-          <SignatureModule
-            settings={settings}
-            updateSettings={updateSettings}
-            isPro={isPro}
-            onShowPaywall={onShowPaywall}
-          />
-        </AccordionItem>
+          <MenuButton label="Dimensions" icon={ImageIcon} active={settings.resize.enabled} onClick={() => setActiveView('resize')} />
+          <MenuButton label="Rename" icon={FileEdit} active={settings.rename.enabled} onClick={() => setActiveView('rename')} />
+          <MenuButton label="Sign" icon={PenTool} active={settings.signature.enabled} onClick={() => setActiveView('signature')} />
+          <MenuButton label="Watermark" icon={Type} active={settings.watermark.enabled} onClick={() => setActiveView('watermark')} />
+          <MenuButton label="Format" icon={Zap} active={true} onClick={() => setActiveView('convert')} />
+        </div>
 
-        {/* Watermark Module */}
-        <AccordionItem
-          title="Watermark"
-          icon={Type}
-          isOpen={openSection === 'watermark'}
-          onToggle={() => toggleSection('watermark')}
-          active={settings.watermark.enabled}
-        >
-          <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-            <div className="flex items-center">
-              <label className="text-sm text-ink-main font-medium">Enable Watermark</label>
-              <InfoTooltip content="Upload a PNG logo (Pro) or text. Use the grid or Custom Axis to position." />
+        {/* DIMENSIONS VIEW */}
+        {activeView === 'resize' && (
+          <div className="animate-in slide-in-from-right-8 fade-in duration-300 space-y-6">
+            <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+              <div className="flex items-center">
+                <label className="text-sm text-ink-main font-bold">Enable Resize</label>
+                <InfoTooltip content="Scale by percentage (50%) or set a fixed width. Aspect ratio is always preserved." />
+              </div>
+              <AppleToggle
+                checked={settings.resize.enabled}
+                onChange={(val) => handleResizeChange('enabled', val)}
+              />
             </div>
-            <AppleToggle
-              checked={settings.watermark.enabled}
-              onChange={(val) => handleWatermarkChange('enabled', val)}
+
+            <div className={`space-y-6 transition-all duration-300 ${settings.resize.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+              <div className="flex bg-gray-100/50 p-1.5 rounded-xl border border-gray-100">
+                <button
+                  onClick={() => handleResizeChange('type', 'percentage')}
+                  className={`flex-1 text-xs py-2.5 font-bold rounded-lg transition-all ${settings.resize.type === 'percentage' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
+                >
+                  Scale %
+                </button>
+                <button
+                  onClick={() => handleResizeChange('type', 'width')}
+                  className={`flex-1 text-xs py-2.5 font-bold rounded-lg transition-all ${settings.resize.type === 'width' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
+                >
+                  Width px
+                </button>
+              </div>
+
+              <SynthSlider
+                label="Target Size"
+                displayValue={`${settings.resize.value}${settings.resize.type === 'percentage' ? '%' : 'px'}`}
+                min={settings.resize.type === 'percentage' ? 10 : 100}
+                max={settings.resize.type === 'percentage' ? 200 : 3840}
+                value={settings.resize.value}
+                onChange={(e) => handleResizeChange('value', parseInt(e.target.value))}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* RENAME VIEW */}
+        {activeView === 'rename' && (
+          <div className="animate-in slide-in-from-right-8 fade-in duration-300">
+            <RenameModule
+              settings={settings}
+              updateSettings={updateSettings}
+              isPro={isPro}
+              onShowPaywall={onShowPaywall || (() => { })}
             />
           </div>
+        )}
 
-          <div className={`space-y-4 transition-all duration-300 ${settings.watermark.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+        {/* SIGNATURE VIEW */}
+        {activeView === 'signature' && (
+          <div className="animate-in slide-in-from-right-8 fade-in duration-300">
+            <SignatureModule
+              settings={settings}
+              updateSettings={updateSettings}
+              isPro={isPro}
+              onShowPaywall={onShowPaywall}
+              onPlacementStart={onPlacementStart}
+            />
 
-            {/* Mode Toggles */}
-            <div className="flex bg-gray-100 p-1 rounded-lg">
-              <button
-                onClick={() => handleWatermarkChange('mode', 'text')}
-                className={`flex-1 text-xs py-2 font-bold rounded-md transition-all ${settings.watermark.mode === 'text' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
-              >
-                Text
-              </button>
-              <button
-                onClick={() => handleWatermarkChange('mode', 'image')}
-                className={`flex-1 text-xs py-2 font-bold rounded-md transition-all flex items-center justify-center gap-1 ${settings.watermark.mode === 'image' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
-              >
-                Logo
-                {!isPro && <Lock size={12} className="text-accent-gold" />}
-              </button>
+
+          </div>
+        )}
+
+        {/* WATERMARK VIEW */}
+        {activeView === 'watermark' && (
+          <div className="animate-in slide-in-from-right-8 fade-in duration-300 space-y-6">
+            <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+              <div className="flex items-center">
+                <label className="text-sm text-ink-main font-bold">Enable Watermark</label>
+                <InfoTooltip content="Upload a PNG logo (Pro) or text. Use the grid or Custom Axis to position." />
+              </div>
+              <AppleToggle
+                checked={settings.watermark.enabled}
+                onChange={(val) => handleWatermarkChange('enabled', val)}
+              />
             </div>
 
-            {settings.watermark.mode === 'text' ? (
-              <div className="space-y-1">
-                <input
-                  type="text"
-                  value={settings.watermark.text}
-                  onChange={(e) => handleWatermarkChange('text', e.target.value)}
-                  className="w-full bg-white rounded-lg px-3 py-2 text-sm text-ink-main shadow-sm border border-gray-200 focus:ring-1 focus:ring-accent-gold/20 focus:border-accent-gold transition-all placeholder:text-ink-muted/50"
-                  placeholder="© Brand Name"
-                />
+            <div className={`space-y-6 transition-all duration-300 ${settings.watermark.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+              {/* Mode Toggles */}
+              <div className="flex bg-gray-100/50 p-1.5 rounded-xl border border-gray-100">
+                <button
+                  onClick={() => handleWatermarkChange('mode', 'text')}
+                  className={`flex-1 text-xs py-2.5 font-bold rounded-lg transition-all ${settings.watermark.mode === 'text' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
+                >
+                  Text
+                </button>
+                <button
+                  onClick={() => handleWatermarkChange('mode', 'image')}
+                  className={`flex-1 text-xs py-2.5 font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${settings.watermark.mode === 'image' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
+                >
+                  Logo
+                  {!isPro && <Lock size={12} className="text-accent-gold" />}
+                </button>
               </div>
-            ) : (
-              <div className="space-y-3 relative group">
-                <label className={`
-                        flex flex-col items-center justify-center w-full h-24 border border-dashed rounded-lg cursor-pointer bg-white transition-colors
-                        ${isPro ? 'border-gray-300 hover:bg-gray-50' : 'border-gray-200'}
-                    `}>
-                  {settings.watermark.imageData ? (
-                    <img src={settings.watermark.imageData} alt="Logo" className="h-full object-contain p-2" />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center pt-2 pb-3">
-                      <Upload className="w-5 h-5 text-gray-400 mb-1" />
-                      <p className="text-[10px] text-gray-500 font-medium">Click to upload PNG</p>
-                    </div>
-                  )}
-                  <input type="file" className="hidden" accept="image/png,image/jpeg" onChange={handleImageUpload} disabled={!isPro} />
-                </label>
 
-                <SynthSlider
-                  label="Logo Scale"
-                  displayValue={`${Math.round(settings.watermark.scale * 100)}%`}
-                  min="0.1"
-                  max="1"
-                  step="0.05"
-                  value={settings.watermark.scale}
-                  onChange={(e) => handleWatermarkChange('scale', parseFloat(e.target.value))}
-                  disabled={!isPro}
-                />
-              </div>
-            )}
-
-            {settings.watermark.mode === 'text' && (
-              <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-                <label className="text-xs text-ink-muted font-bold uppercase block mb-2">Color</label>
-                <div className="relative w-full h-8 rounded-md overflow-hidden border border-gray-100">
+              {settings.watermark.mode === 'text' ? (
+                <div className="space-y-1">
                   <input
-                    type="color"
-                    value={settings.watermark.color}
-                    onChange={(e) => handleWatermarkChange('color', e.target.value)}
-                    className="absolute -top-4 -left-4 w-[200%] h-[200%] cursor-pointer p-0 m-0"
+                    type="text"
+                    value={settings.watermark.text}
+                    onChange={(e) => handleWatermarkChange('text', e.target.value)}
+                    className="w-full bg-white rounded-lg px-3 py-2 text-sm text-ink-main shadow-sm border border-gray-200 focus:ring-1 focus:ring-accent-gold/20 focus:border-accent-gold transition-all placeholder:text-ink-muted/50"
+                    placeholder="© Brand Name"
                   />
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="space-y-3 relative group">
+                  <label className={`
+                                flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-white transition-colors
+                                ${isPro ? 'border-gray-300 hover:bg-gray-50' : 'border-gray-200 opacity-60'}
+                            `}>
+                    {settings.watermark.imageData ? (
+                      <img src={settings.watermark.imageData} alt="Logo" className="h-full object-contain p-4" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center pt-2 pb-3">
+                        <Upload className="w-6 h-6 text-gray-400 mb-2" />
+                        <p className="text-[10px] text-gray-500 font-medium">Click to upload PNG</p>
+                      </div>
+                    )}
+                    <input type="file" className="hidden" accept="image/png,image/jpeg" onChange={handleImageUpload} disabled={!isPro} />
+                  </label>
 
-            <SynthSlider
-              label="Opacity"
-              displayValue={`${Math.round(settings.watermark.opacity * 100)}%`}
-              min="0"
-              max="1"
-              step="0.1"
-              value={settings.watermark.opacity}
-              onChange={(e) => handleWatermarkChange('opacity', parseFloat(e.target.value))}
-            />
+                  <SynthSlider
+                    label="Logo Scale"
+                    displayValue={`${Math.round(settings.watermark.scale * 100)}%`}
+                    min="0.1"
+                    max="1"
+                    step="0.05"
+                    value={settings.watermark.scale}
+                    onChange={(e) => handleWatermarkChange('scale', parseFloat(e.target.value))}
+                    disabled={!isPro}
+                  />
+                </div>
+              )}
 
-            <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-              <label className="text-xs text-ink-muted font-bold uppercase block mb-2">Position</label>
+              {settings.watermark.mode === 'text' && (
+                <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                  <label className="text-xs text-ink-muted font-bold uppercase block mb-2">Color</label>
+                  <div className="relative w-full h-8 rounded-md overflow-hidden border border-gray-100">
+                    <input
+                      type="color"
+                      value={settings.watermark.color}
+                      onChange={(e) => handleWatermarkChange('color', e.target.value)}
+                      className="absolute -top-4 -left-4 w-[200%] h-[200%] cursor-pointer p-0 m-0"
+                    />
+                  </div>
+                </div>
+              )}
 
-              {/* 3x3 Grid */}
-              <div className="grid grid-cols-3 gap-2 w-full max-w-[160px] mx-auto">
-                {positions.map((pos) => {
-                  const active = settings.watermark.position === pos;
-                  return (
-                    <button
-                      key={pos}
-                      onClick={() => handleWatermarkChange('position', pos)}
-                      className={`
-                                aspect-square rounded-md border flex items-center justify-center transition-all
-                                ${active ? 'bg-ink-main border-ink-main text-white shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'}
-                            `}
-                      title={pos.replace('-', ' ')}
-                    >
-                      <div className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-white' : 'bg-ink-muted/30'}`} />
-                    </button>
-                  )
-                })}
+              <SynthSlider
+                label="Opacity"
+                displayValue={`${Math.round(settings.watermark.opacity * 100)}%`}
+                min="0"
+                max="1"
+                step="0.1"
+                value={settings.watermark.opacity}
+                onChange={(e) => handleWatermarkChange('opacity', parseFloat(e.target.value))}
+              />
+
+              <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                <label className="text-xs text-ink-muted font-bold uppercase block mb-2">Position</label>
+                <div className="grid grid-cols-3 gap-2 w-full max-w-[160px] mx-auto">
+                  {positions.map((pos) => {
+                    const active = settings.watermark.position === pos;
+                    return (
+                      <button
+                        key={pos}
+                        onClick={() => handleWatermarkChange('position', pos)}
+                        className={`
+                                        aspect-square rounded-md border flex items-center justify-center transition-all
+                                        ${active ? 'bg-ink-main border-ink-main text-white shadow-md' : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'}
+                                    `}
+                        title={pos.replace('-', ' ')}
+                      >
+                        <div className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-white' : 'bg-ink-muted/30'}`} />
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>
-        </AccordionItem>
+        )}
 
-        {/* Convert Module */}
-        <AccordionItem
-          title="Format"
-          icon={Zap}
-          isOpen={openSection === 'convert'}
-          onToggle={() => toggleSection('convert')}
-          active={true}
-        >
-          <div className="space-y-4">
-            <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-              <label className="text-xs text-ink-muted font-bold uppercase block mb-2">Output Type</label>
-              <div className="grid grid-cols-3 gap-1.5">
+        {/* FORMAT VIEW */}
+        {activeView === 'convert' && (
+          <div className="animate-in slide-in-from-right-8 fade-in duration-300 space-y-6">
+            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+              <label className="text-xs text-ink-muted font-bold uppercase block mb-3">Output Type</label>
+              <div className="grid grid-cols-2 gap-2">
                 {Object.values(OutputFormat).map((fmt) => {
                   const label = fmt.split('/')[1].toUpperCase().replace('JPEG', 'JPG');
                   const active = settings.convert.format === fmt;
@@ -461,36 +489,78 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       key={fmt}
                       onClick={() => handleConvertChange('format', fmt)}
                       className={`
-                                py-2 rounded-md text-[10px] font-bold border transition-all
-                                ${active ? 'bg-white border-accent-gold text-accent-gold shadow-sm' : 'bg-gray-50 border-transparent text-ink-muted hover:bg-gray-100'}
-                            `}
+                                    py-3 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-2
+                                    ${active ? 'bg-ink-main text-white border-ink-main shadow-md' : 'bg-gray-50 border-transparent text-ink-muted hover:bg-gray-100'}
+                                `}
                     >
-                      {label}
+                      {label} {active && <Check size={12} />}
                     </button>
                   )
                 })}
               </div>
             </div>
 
-            <SynthSlider
-              label="Quality"
-              displayValue={`${Math.round(settings.convert.quality * 100)}%`}
-              min="0.1"
-              max="1"
-              step="0.1"
-              value={settings.convert.quality}
-              onChange={(e) => handleConvertChange('quality', parseFloat(e.target.value))}
-            />
           </div>
-        </AccordionItem>
+        )}
+
       </div>
 
-      {/* Footer: State Machine Button & Preset Save */}
-      <div className="mt-6 px-6 pb-6">
+      {/* 3. Fixed Footer */}
+      <div className="mt-auto px-6 pb-6 pt-4 bg-white/50 backdrop-blur-md border-t border-gray-100 z-10">
 
-        {/* Main Action Button (State Machine) */}
+
+        {/* Quality Presets (Always Visible) */}
+        {!settings.convert.format.includes('png') && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[10px] font-bold text-ink-muted uppercase tracking-wider">Quality Preset</label>
+              <span className="text-[10px] font-bold text-accent-gold">
+                {settings.convert.quality <= 0.4 ? 'Small Size' :
+                  settings.convert.quality >= 0.99 ? 'Best Quality' : 'Perfect Size'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Low', val: 0.2 },
+                { label: 'Mid', val: 0.95 },
+                { label: 'High', val: 1.0 }
+              ].map((preset) => {
+                let isActive = false;
+                if (preset.label === 'Low') isActive = settings.convert.quality <= 0.4;
+                else if (preset.label === 'High') isActive = settings.convert.quality >= 0.99;
+                else isActive = settings.convert.quality > 0.4 && settings.convert.quality < 0.99;
+
+                return (
+                  <button
+                    key={preset.label}
+                    onClick={() => handleConvertChange('quality', preset.val)}
+                    className={`
+                        py-2.5 rounded-lg text-xs font-bold border transition-all duration-200
+                        ${isActive
+                        ? 'bg-ink-main text-white border-ink-main shadow-md transform scale-[1.02]'
+                        : 'bg-white border-gray-200 text-ink-muted hover:bg-gray-50 hover:border-gray-300'}
+                      `}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* PNG Warning */}
+        {settings.convert.format.includes('png') && (
+          <div className="mb-6 p-3 bg-blue-50/50 border border-blue-100 rounded-lg flex items-center justify-center gap-2">
+            <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></div>
+            <span className="text-xs font-bold text-blue-600">PNG is Lossless (Max Quality)</span>
+          </div>
+        )}
+
+        {/* Main Action Button */}
         <button
-          onClick={onProcess}
+          onClick={handleStartClick}
           disabled={btnState.disabled}
           className={`
                 hidden md:flex w-full py-4 rounded-xl items-center justify-center gap-2 font-bold text-sm tracking-wide shadow-lg mb-4 transition-all duration-300

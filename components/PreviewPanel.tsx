@@ -7,13 +7,19 @@ interface PreviewPanelProps {
   image: ImageFile;
   settings: AppSettings;
   updateSettings: (s: AppSettings) => void;
+
   onClose: () => void;
+  mode?: 'general' | 'placement';
 }
 
-export const PreviewPanel: React.FC<PreviewPanelProps> = ({ image, settings, updateSettings, onClose }) => {
+export const PreviewPanel: React.FC<PreviewPanelProps> = ({ image, settings, updateSettings, onClose, mode = 'general' }) => {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [processedUrl, setProcessedUrl] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(true);
+
+  // Placement Mode: Trust the prop from parent
+  const isPlacementMode = mode === 'placement';
+
+  const [isGenerating, setIsGenerating] = useState(!isPlacementMode);
 
   // Dragging State
   const [isDraggingSign, setIsDraggingSign] = useState(false);
@@ -30,9 +36,9 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ image, settings, upd
   useEffect(() => {
     let mounted = true;
 
-    // In signature mode, we don't block the UI with a spinner because we are compositing client-side
-    // We only show spinner if we aren't in signature mode OR if we have no processed image yet (initial load)
-    const shouldShowSpinner = !settings.signature.enabled;
+    // In signature placement mode, we don't need a spinner for processing because we are composing locally
+    // If in General Mode, we DO need spinner while worker processes
+    const shouldShowSpinner = !isPlacementMode;
     if (shouldShowSpinner) setIsGenerating(true);
 
     const generatePreview = async () => {
@@ -55,9 +61,13 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ image, settings, upd
     };
   }, [image, settings]);
 
+
+
+
+
   // --- Compare Slider Logic ---
   const handleSliderMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (settings.signature.enabled) return; // Disable slider when in sign mode
+    if (isPlacementMode) return; // Disable slider when in placement mode
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -145,26 +155,54 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ image, settings, upd
             <p className="text-xs text-ink-muted truncate max-w-[300px]">{image.file.name}</p>
           </div>
 
-          {settings.signature.enabled && (
-            <div className="flex items-center gap-2 bg-yellow-50 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold border border-yellow-100">
-              <Move size={12} />
-              <span>Drag Signature to Place</span>
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            {isPlacementMode && (
+              <>
+                <div className="flex items-center gap-2 bg-yellow-50 text-yellow-700 px-3 py-1 rounded-full text-xs font-bold border border-yellow-100">
+                  <Move size={12} />
+                  <span>Drag to Place</span>
+                </div>
+                {/* PC ONLY: Done Button in Header */}
+                <button
+                  onClick={onClose}
+                  className="hidden md:flex items-center gap-2 bg-black text-white px-5 py-2 rounded-full text-xs font-bold shadow-sm hover:scale-105 active:scale-95 transition-all"
+                >
+                  <Check size={14} strokeWidth={3} />
+                  <span>Done</span>
+                </button>
+              </>
+            )}
 
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-black/5 rounded-full transition-all text-ink-muted hover:text-ink-main"
-          >
-            <ArrowRight size={20} strokeWidth={1.5} />
-          </button>
+            {!isPlacementMode && (
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-black/5 rounded-full transition-all text-ink-muted hover:text-ink-main"
+              >
+                <ArrowRight size={20} strokeWidth={1.5} />
+              </button>
+            )}
+
+            {/* If signature enabled, we show Done button on PC, but on mobile we might still show Arrow if we want?
+                Actually, let's keep Arrow hidden on PC if signature enabled since we have Done.
+                On Mobile, we have visual FAB, so maybe header arrow is fine or hide it?
+                Let's hide standard arrow when signature is enabled to avoid confusion, forcing user to use "Done".
+            */}
+            {isPlacementMode && (
+              <button
+                onClick={onClose}
+                className="md:hidden p-2 hover:bg-black/5 rounded-full transition-all text-ink-muted hover:text-ink-main"
+              >
+                <ArrowRight size={20} strokeWidth={1.5} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 relative flex flex-col items-center justify-center p-8 overflow-hidden bg-paper-dark/10">
 
-          {/* Show Spinner ONLY if we are generating AND NOT in signature mode (or if we truly have nothing to show) */}
-          {isGenerating && !settings.signature.enabled ? (
+          {/* Show Spinner ONLY if required */}
+          {isGenerating && !isPlacementMode ? (
             <div className="flex flex-col items-center gap-4">
               <div className="w-8 h-8 border-2 border-ink-muted/30 border-t-ink-main rounded-full animate-spin"></div>
               <span className="text-ink-muted text-xs font-medium tracking-wide">Rendering preview...</span>
@@ -173,121 +211,163 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ image, settings, upd
             <div className="flex flex-col gap-6 w-full h-full">
 
               {/* Interactive Canvas */}
-              <div
-                ref={containerRef}
-                className={`relative flex-1 w-full bg-white rounded-sm group shadow-card border border-white overflow-hidden
-                            ${settings.signature.enabled ? 'cursor-default' : 'cursor-ew-resize'}
-                        `}
-                onMouseMove={!settings.signature.enabled ? handleSliderMove : undefined}
-                onTouchMove={!settings.signature.enabled ? handleSliderMove : undefined}
-              >
-                {/* Background (Original) */}
-                <div className="absolute inset-0 w-full h-full bg-[url('https://placehold.co/20x20/e5e7eb/ffffff?text=')] opacity-30"></div>
+              {/* Parent Flex Container to Center the Constrained Image */}
+              <div className="flex-1 w-full flex items-center justify-center p-4 overflow-hidden relative">
 
-                {/* If Signing: Show Original FULL opacity underneath + Signature Overlay */}
-                {settings.signature.enabled ? (
-                  <img
-                    src={image.previewUrl}
-                    alt="Original"
-                    className="absolute inset-0 w-full h-full object-contain p-4 pointer-events-none select-none"
-                  />
-                ) : (
-                  <img
-                    src={image.previewUrl}
-                    alt="Original"
-                    className="absolute inset-0 w-full h-full object-contain p-4"
-                  />
-                )}
+                {/* CONSTRAINED WRAPPER: Matches Image Aspect Ratio Exactly */}
+                <div
+                  ref={containerRef}
+                  className={`relative shadow-card border border-white overflow-hidden
+                              ${isPlacementMode ? 'cursor-default' : 'cursor-ew-resize'}
+                          `}
+                  style={{
+                    aspectRatio: image.originalDimensions
+                      ? `${image.originalDimensions.width} / ${image.originalDimensions.height}`
+                      : 'auto',
+                    width: image.originalDimensions
+                      ? (image.originalDimensions.width > image.originalDimensions.height ? '100%' : 'auto')
+                      : '100%',
+                    height: image.originalDimensions
+                      ? (image.originalDimensions.height >= image.originalDimensions.width ? '100%' : 'auto')
+                      : '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%'
+                  }}
+                  onMouseMove={!isPlacementMode ? handleSliderMove : undefined}
+                  onTouchMove={!isPlacementMode ? handleSliderMove : undefined}
+                >
+                  {/* Background (Original) */}
+                  <div className="absolute inset-0 w-full h-full bg-[url('https://placehold.co/20x20/e5e7eb/ffffff?text=')] opacity-30"></div>
 
-
-                {/* Slider Mode: Foreground (Processed) - Clipped */}
-                {!settings.signature.enabled && processedUrl && (
-                  <div
-                    className="absolute inset-0 w-full h-full overflow-hidden bg-white border-r border-accent-gold/50"
-                    style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
-                  >
+                  {/* If Signing: Show Original FULL opacity underneath + Signature Overlay */}
+                  {isPlacementMode ? (
                     <img
-                      src={processedUrl}
-                      alt="Processed"
-                      className="absolute inset-0 w-full h-full object-contain p-4"
+                      src={image.previewUrl}
+                      alt="Original"
+                      className="absolute inset-0 w-full h-full object-contain pointer-events-none select-none"
                     />
-                  </div>
-                )}
+                  ) : (
+                    <img
+                      src={image.previewUrl}
+                      alt="Original"
+                      className="absolute inset-0 w-full h-full object-contain"
+                    />
+                  )}
 
-                {/* Signature Interactive Layer - USES LOCAL STATE */}
-                {settings.signature.enabled && settings.signature.imageData && (
-                  <div
-                    className="absolute z-20 cursor-move group"
-                    style={{
-                      left: `${localSignPos.x}%`,
-                      top: `${localSignPos.y}%`,
-                      // Use translate to center the anchor point
-                      transform: 'translate(-50%, -50%)',
-                      width: `${settings.signature.scale}%`,
-                      maxWidth: '100%',
-                    }}
-                    onMouseDown={handleDragStart}
-                    onTouchStart={handleDragStart}
-                  >
-                    <div className={`relative border-2 ${isDraggingSign ? 'border-accent-gold' : 'border-transparent group-hover:border-dashed group-hover:border-ink-muted/50'} rounded transition-colors p-1`}>
+
+                  {/* Slider Mode: Foreground (Processed) - Clipped */}
+                  {!isPlacementMode && processedUrl && (
+                    <div
+                      className="absolute inset-0 w-full h-full overflow-hidden bg-white border-r border-accent-gold/50"
+                      style={{ clipPath: `inset(0 ${100 - sliderPosition}% 0 0)` }}
+                    >
                       <img
-                        src={settings.signature.imageData}
-                        alt="Signature"
-                        className="w-full h-auto pointer-events-none select-none drop-shadow-md"
+                        src={processedUrl}
+                        alt="Processed"
+                        className="absolute inset-0 w-full h-full object-contain"
                       />
-                      {/* Drag Handle Indicator */}
-                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-white border border-gray-200 rounded-full shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Move size={8} className="text-ink-muted" />
+                    </div>
+                  )}
+
+                  {/* Slider Handle (Only in compare mode) */}
+                  {!isPlacementMode && (
+                    <div
+                      className="absolute top-0 bottom-0 w-px bg-accent-gold z-10"
+                      style={{ left: `${sliderPosition}%` }}
+                    >
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg border border-white">
+                        <div className="flex gap-1">
+                          <div className="w-px h-3 bg-ink-muted/30"></div>
+                          <div className="w-px h-3 bg-ink-muted/30"></div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Slider Handle (Only in compare mode) */}
-                {!settings.signature.enabled && (
-                  <div
-                    className="absolute top-0 bottom-0 w-px bg-accent-gold z-10"
-                    style={{ left: `${sliderPosition}%` }}
-                  >
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg border border-white">
-                      <div className="flex gap-1">
-                        <div className="w-px h-3 bg-ink-muted/30"></div>
-                        <div className="w-px h-3 bg-ink-muted/30"></div>
+                  {/* Signature Interactive Layer - USES LOCAL STATE - ONLY IN PLACEMENT MODE */}
+                  {isPlacementMode && settings.signature.imageData && (
+                    <div
+                      className="absolute z-20 cursor-move group"
+                      style={{
+                        left: `${localSignPos.x}%`,
+                        top: `${localSignPos.y}%`,
+                        // Use translate to center the anchor point
+                        transform: 'translate(-50%, -50%)',
+                        width: `${settings.signature.scale}%`,
+                        maxWidth: '100%',
+                      }}
+                      onMouseDown={handleDragStart}
+                      onTouchStart={handleDragStart}
+                    >
+                      <div className={`relative border-2 ${isDraggingSign ? 'border-accent-gold' : 'border-transparent group-hover:border-dashed group-hover:border-ink-muted/50'} rounded transition-colors p-1`}>
+                        <img
+                          src={settings.signature.imageData}
+                          alt="Signature"
+                          className="w-full h-auto pointer-events-none select-none drop-shadow-md"
+                        />
+                        {/* Drag Handle Indicator */}
+                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-white border border-gray-200 rounded-full shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Move size={8} className="text-ink-muted" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Labels */}
-                {!settings.signature.enabled && <>
-                  <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-sm text-[10px] text-ink-muted font-bold tracking-wider shadow-sm">ORIGINAL</div>
-                  <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-sm text-[10px] text-accent-gold font-bold tracking-wider shadow-sm">PROCESSED</div>
-                </>}
+                  {/* Confirm Button for Mobile/Touch (Signature Mode Only) */}
+                  {/* Visual FAB only on Mobile now */}
+                  {isPlacementMode && (
+                    <div className={`
+                        absolute z-30 animate-in zoom-in-95 duration-300
+                        bottom-6 left-1/2 -translate-x-1/2 
+                        md:hidden /* Hidden on Desktop */
+                    `}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClose();
+                        }}
+                        className="flex items-center gap-2 bg-black text-white px-6 py-3 rounded-full font-bold shadow-xl border border-white/20 hover:scale-105 active:scale-95 transition-all"
+                      >
+                        <Check size={18} strokeWidth={3} />
+                        <span>Done</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Labels */}
+                  {!isPlacementMode && !settings.watermark.enabled ? <>
+                    <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-sm text-[10px] text-ink-muted font-bold tracking-wider shadow-sm">ORIGINAL</div>
+                    <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-sm text-[10px] text-accent-gold font-bold tracking-wider shadow-sm">PROCESSED</div>
+                  </> : null}
+                </div>
               </div>
 
               {/* Stats */}
-              {isGenerating && settings.signature.enabled && (
+              {isGenerating && isPlacementMode && (
                 <div className="absolute top-4 right-4">
-                  <div className="w-4 h-4 border-2 border-accent-gold/30 border-t-accent-gold rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-accent-gold/60 border-t-accent-gold rounded-full animate-spin"></div>
                 </div>
               )}
 
-              {!settings.signature.enabled && (
-                <div className="h-24 bg-white rounded-sm p-6 grid grid-cols-3 gap-6 shadow-card border border-white">
-                  <div className="flex flex-col justify-center">
-                    <span className="text-[10px] text-ink-muted uppercase tracking-wider font-medium">Original Size</span>
-                    <span className="text-sm font-bold text-ink-main font-mono mt-1">{(image.file.size / 1024).toFixed(1)} KB</span>
-                  </div>
-                  <div className="flex flex-col justify-center border-l border-ink-muted/10 pl-6">
-                    <span className="text-[10px] text-ink-muted uppercase tracking-wider font-medium">Est. Output</span>
-                    <span className="text-sm font-bold text-ink-main font-mono mt-1 text-accent-gold">~{(image.file.size * 0.8 / 1024).toFixed(1)} KB</span>
-                  </div>
-                  <div className="flex flex-col justify-center border-l border-ink-muted/10 pl-6">
-                    <span className="text-[10px] text-ink-muted uppercase tracking-wider font-medium">Format</span>
-                    <span className="text-sm font-bold text-ink-main font-mono mt-1">{settings.convert.format.split('/')[1].toUpperCase()}</span>
-                  </div>
+              {/* Stats Panel - Always Visible */}
+              <div className="min-h-24 bg-white rounded-sm p-6 grid grid-cols-3 gap-6 shadow-card border border-white relative z-10">
+                <div className="flex flex-col justify-center">
+                  <span className="text-[10px] text-ink-muted uppercase tracking-wider font-medium">Original Size</span>
+                  <span className="text-sm font-bold text-ink-main font-mono mt-1">{(image.file.size / 1024).toFixed(1)} KB</span>
                 </div>
-              )}
+                <div className="flex flex-col justify-center border-l border-ink-muted/10 pl-6">
+                  <span className="text-[10px] text-ink-muted uppercase tracking-wider font-medium">Efficiency</span>
+                  <span className="text-sm font-bold text-ink-main font-mono mt-1 text-accent-gold">
+                    {settings.convert.quality <= 0.4 ? 'Max Compression' :
+                      settings.convert.quality >= 0.99 ? 'Max Quality' : 'Balanced'}
+                  </span>
+                </div>
+                <div className="flex flex-col justify-center border-l border-ink-muted/10 pl-6">
+                  <span className="text-[10px] text-ink-muted uppercase tracking-wider font-medium">Format</span>
+                  <span className="text-sm font-bold text-ink-main font-mono mt-1">{settings.convert.format.split('/')[1].toUpperCase()}</span>
+                </div>
+              </div>
+
             </div>
           )}
         </div>
@@ -295,3 +375,4 @@ export const PreviewPanel: React.FC<PreviewPanelProps> = ({ image, settings, upd
     </>
   );
 };
+// Reviewed

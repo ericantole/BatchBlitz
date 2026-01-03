@@ -10,7 +10,7 @@ interface AppState {
   selectedPresetId: string; // 'default' or UUID
   setUser: (user: User | null) => void;
   setPro: (isPro: boolean) => void;
-  togglePro: () => void;
+
   addPreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
   setSelectedPresetId: (id: string) => void;
@@ -26,12 +26,12 @@ export const useStore = create<AppState>()(
       selectedPresetId: 'default',
       setUser: (user) => set({ user }),
       setPro: (isPro) => set({ isPro }),
-      togglePro: () => set((state) => ({ isPro: !state.isPro })),
-      addPreset: (preset) => set((state) => ({ 
-        presets: [...state.presets, preset] 
+
+      addPreset: (preset) => set((state) => ({
+        presets: [...state.presets, preset]
       })),
-      removePreset: (id) => set((state) => ({ 
-        presets: state.presets.filter((p) => p.id !== id) 
+      removePreset: (id) => set((state) => ({
+        presets: state.presets.filter((p) => p.id !== id)
       })),
       setSelectedPresetId: (id) => set({ selectedPresetId: id }),
       reset: () => set({ user: null, isPro: false, presets: [], selectedPresetId: 'default' }),
@@ -39,7 +39,7 @@ export const useStore = create<AppState>()(
     {
       name: 'batchblitz-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         presets: state.presets,
         isPro: state.isPro,
         selectedPresetId: state.selectedPresetId

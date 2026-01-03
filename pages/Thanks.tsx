@@ -10,8 +10,6 @@ export const Thanks: React.FC = () => {
     const { setPro } = useStore();
 
     useEffect(() => {
-        // Activate Pro
-        setPro(true);
         // Celebration
         confetti({
             particleCount: 150,
@@ -19,7 +17,7 @@ export const Thanks: React.FC = () => {
             origin: { y: 0.6 },
             colors: ['#D4AF37', '#FFD700', '#F4C430'] // Gold colors
         });
-    }, [setPro]);
+    }, []);
 
     return (
         <div className="min-h-screen bg-paper-base flex flex-col font-sans">
