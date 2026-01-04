@@ -53,7 +53,7 @@ const TypewriterBadge = () => {
     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-gray-100 bg-white/50 backdrop-blur-sm shadow-sm mb-1">
       <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
       <span className="text-[10px] md:text-xs font-medium text-ink-muted">
-        #1 Private Batch Tool for{" "}
+        #1 Private Batch Image Tool for{" "}
         <span className="text-ink-main font-bold">
           {PHRASES[index].substring(0, subIndex)}
         </span>
@@ -149,8 +149,14 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
           BatchBlitz
         </h1>
         <p className="text-lg md:text-xl text-ink-muted font-light max-w-2xl mx-auto text-center font-serif italic">
-          The studio for your images. <br className="md:hidden" />
-          <span className="text-ink-main ml-0 md:ml-2 font-medium opacity-80 font-sans not-italic">Local. Private. Fast.</span>
+          The private studio for batch photo editing. <br className="md:hidden" />
+          <span className="relative inline-block ml-0 md:ml-2">
+            <span className="text-ink-main font-medium opacity-80 font-sans not-italic relative z-10">Local. Private. Fast.</span>
+            <svg className="absolute -bottom-2 left-0 w-full h-3 text-green-500" viewBox="0 0 100 15" preserveAspectRatio="none">
+              <path d="M 2 5 Q 50 -2 98 6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+              <path d="M 5 11 Q 50 4 95 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+            </svg>
+          </span>
         </p>
       </div>
 

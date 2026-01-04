@@ -21,50 +21,7 @@ export const processImage = async (
         let finalBlob = blob;
 
         // --- Advanced Metadata Preservation Logic ---
-        // If Output is JPEG (since piexif only supports JPEG) and Input was JPEG
-        // We attempt to lift EXIF from original and inject into new Blob.
-        const isJpegOutput = settings.convert.format === 'image/jpeg';
-        const isJpegInput = file.type === 'image/jpeg' || file.type === 'image/jpg';
-
-        if (isJpegOutput && isJpegInput) {
-          try {
-            // 1. Read Original EXIF
-            const originalBuffer = await file.arrayBuffer();
-            // Piexif needs BinaryString (Latin1)
-            const originalBinary = Array.from(new Uint8Array(originalBuffer))
-              .map(b => String.fromCharCode(b)).join("");
-
-            const exifObj = piexif.load(originalBinary);
-
-            // Check if EXIF actually exists
-            if (exifObj && (Object.keys(exifObj['0th']).length > 0 || Object.keys(exifObj['Exif']).length > 0)) {
-              // 2. Read Processed Image as Base64/Binary
-              const processedBuffer = await blob.arrayBuffer();
-              const processedBinary = Array.from(new Uint8Array(processedBuffer))
-                .map(b => String.fromCharCode(b)).join("");
-
-              // 3. Insert EXIF
-              // We must re-dump the exif object to string
-              const exifBytes = piexif.dump(exifObj);
-              const newJpegBinary = piexif.insert(exifBytes, processedBinary);
-
-              // 4. Convert back to Blob
-              // This is heavy but necessary for bit-level manipulation
-              const len = newJpegBinary.length;
-              const bytes = new Uint8Array(len);
-              for (let i = 0; i < len; i++) {
-                bytes[i] = newJpegBinary.charCodeAt(i);
-              }
-              finalBlob = new Blob([bytes], { type: 'image/jpeg' });
-
-              // console.log("Metadata successfully injected.");
-            }
-
-          } catch (exifErr) {
-            console.warn("Metadata preservation skipped (likely not a standard JPEG or empty EXIF):", exifErr);
-            // Fallback to the processed blob (no metadata)
-          }
-        }
+        // Exif processing is now handled in the Worker to prevent UI lag.
         // ---------------------------------------------
 
         const url = URL.createObjectURL(finalBlob);

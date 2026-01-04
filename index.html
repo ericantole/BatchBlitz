@@ -66,9 +66,10 @@
         linear-gradient(#E5E5E0 1px, transparent 1px),
         linear-gradient(90deg, #E5E5E0 1px, transparent 1px);
       background-size: 40px 40px;
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+      margin: 0;
+      padding: 0;
+      /* Prevent scrolling on the body - App handles it */
+      overflow: hidden;
     }
 
     /* Noise Texture Overlay */

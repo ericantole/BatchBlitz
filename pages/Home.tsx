@@ -8,6 +8,7 @@ import { PaywallModal } from '../components/PaywallModal';
 import { SecurityModal } from '../components/SecurityModal';
 import { LoginModal } from '../components/LoginModal';
 import { Navbar } from '../components/Navbar';
+import { FeaturesGallery } from '../components/FeaturesGallery';
 import { DEFAULT_SETTINGS, MAX_FREE_FILES } from '../constants';
 import { ImageFile, ImageStatus, AppSettings } from '../types';
 import { processImage } from '../services/imageProcessor';
@@ -21,13 +22,13 @@ const generateId = () => Math.random().toString(36).substring(2, 15);
 
 // Professional Reviews Data
 const REVIEWS = [
-    { name: "Elara Vance", role: "Etsy Jewelry Shop Owner", text: "Resizing 200 product photos for my shop used to take all day. With BatchBlitz, my listings look uniform instantly.", img: "/avatars/avatar_elara.png", rating: 5.0 },
-    { name: "Kaelen Thorne", role: "ML Engineer @ TechStart", text: "Preprocessing 5,000 images for a vision dataset without uploading them? This is a privacy dream for sensitive data.", img: "/avatars/avatar_kaelen.png", rating: 5.0 },
-    { name: "Marisol Vega", role: "Print-on-Demand Artist", text: "I watermark designs for my Redbubble & Teespring stores in seconds. Essential protection for my art.", img: "/avatars/avatar_marisol.png", rating: 4.8 },
-    { name: "Brynn Harper", role: "Amazon KDP Creator", text: "Formatting 100 book covers for Kindle Direct Publishing used to remain a nightmare. Now it's a 5-minute coffee break.", img: "/avatars/avatar_brynn.png", rating: 4.9 },
-    { name: "Dr. Silas Mercer", role: "University Researcher", text: "Organizing field research photos securely on my device. Perfect for maintaining data compliance standards.", img: "/avatars/avatar_silas.png", rating: 4.9 },
-    { name: "Oren Pikes", role: "Indie SaaS Founder", text: "The privacy-first approach is huge. I use it to batch-process user assets for my own app without liability.", img: "/avatars/avatar_oren.png", rating: 5.0 },
-    { name: "Jaxon Kade", role: "Wedding Studio Lead", text: "We deliver 800+ photos per client. The custom watermark workflow is actually faster than Lightroom for quick proofs.", img: "/avatars/avatar_jaxon.png", rating: 4.7 },
+    { name: "Elara Vance", role: "Etsy Jewelry Shop Owner", text: "I convert hundreds of iPhone HEIC photos to JPG and resize them for my shop listings in one go. It handles the formats perfectly.", img: "/avatars/avatar_elara.png", rating: 5.0 },
+    { name: "Kaelen Thorne", role: "ML Engineer @ TechStart", text: "Zero server uploads. That's the only way I can legally preprocess 5,000 sensitive dataset images. Local processing is a non-negotiable feature.", img: "/avatars/avatar_kaelen.png", rating: 5.0 },
+    { name: "Marisol Vega", role: "Digital Artist", text: "Bulk watermarking used to be tedious. Now I apply my signature logic to 50+ artworks instantly before posting to social media.", img: "/avatars/avatar_marisol.png", rating: 4.8 },
+    { name: "Brynn Harper", role: "Web Content Manager", text: "Most batch tools look like ancient software. This interface is clean, modern, and actually intuitive. It makes mundane tasks feel premium.", img: "/avatars/avatar_brynn.png", rating: 4.9 },
+    { name: "Dr. Silas Mercer", role: "Archivist", text: "Pattern renaming saved me. Changing '{IMG_001}' to '{Site_Date_ID}' across thousands of field photos kept my database organized.", img: "/avatars/avatar_silas.png", rating: 4.9 },
+    { name: "Oren Pikes", role: "SaaS Founder", text: "It's just fast. I threw 3GB of assets at it to test the browser engine, and it chewed through them without lagging. Solid engineering.", img: "/avatars/avatar_oren.png", rating: 5.0 },
+    { name: "Jaxon Kade", role: "Wedding Photographer", text: "I use the Batch Watermark feature to proof 800+ wedding shots with my logo before sending to clients. Much faster than opening Lightroom.", img: "/avatars/avatar_jaxon.png", rating: 4.7 },
 ];
 
 const HomeReviews = () => {
@@ -43,7 +44,7 @@ const HomeReviews = () => {
     const review = REVIEWS[index];
 
     return (
-        <div className="w-full max-w-[480px] mx-auto mt-6 mb-24 flex flex-col items-center gap-2 relative z-0">
+        <div className="w-full max-w-[480px] mx-auto mt-6 mb-12 flex flex-col items-center gap-2 relative z-0">
             {/* Trust Header */}
             <div className="flex items-center justify-center gap-4 opacity-60 w-full mb-2">
                 <div className="h-[1px] w-6 bg-ink-muted"></div>
@@ -138,6 +139,8 @@ export const Home: React.FC = () => {
     const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
     const [selectedImage, setSelectedImage] = useState<ImageFile | null>(null);
     const [previewMode, setPreviewMode] = useState<'general' | 'placement'>('general');
+    const [activeSidebarView, setActiveSidebarView] = useState('main');
+    const [settingsSnapshot, setSettingsSnapshot] = useState<AppSettings>(DEFAULT_SETTINGS);
 
     // State Machine Logic
     const [isProcessing, setIsProcessing] = useState(false);
@@ -148,6 +151,57 @@ export const Home: React.FC = () => {
     const [showSecurity, setShowSecurity] = useState(false);
     const [showLogin, setShowLogin] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+    const shouldShowLivePreview = images.length > 0 && ['watermark', 'signature'].includes(activeSidebarView);
+
+    const handleSidebarViewChange = useCallback((view: string) => {
+        // When entering a specific editing mode from main, save snapshot
+        if (view !== 'main' && activeSidebarView === 'main') {
+            setSettingsSnapshot(JSON.parse(JSON.stringify(settings)));
+        }
+
+        setActiveSidebarView(view);
+        // If returning to main menu, close any active preview
+        if (view === 'main') {
+            setSelectedImage(null);
+        }
+    }, [setActiveSidebarView, setSelectedImage, settings, activeSidebarView]);
+
+    const handleSaveChanges = () => {
+        // Changes are already in 'settings' state, just exit
+        handleSidebarViewChange('main');
+    };
+
+    const handleDiscardChanges = () => {
+        // Revert to snapshot
+        setSettings(settingsSnapshot);
+        handleSidebarViewChange('main');
+    };
+
+    useEffect(() => {
+        if (shouldShowLivePreview && !selectedImage && images.length > 0) {
+            setSelectedImage(images[0]);
+        }
+    }, [shouldShowLivePreview, selectedImage, images]);
+
+    const getSelectedImageIndex = () => {
+        if (!selectedImage) return -1;
+        return images.findIndex(img => img.id === selectedImage.id);
+    };
+
+    const handleNextImage = () => {
+        const idx = getSelectedImageIndex();
+        if (idx !== -1 && idx < images.length - 1) {
+            setSelectedImage(images[idx + 1]);
+        }
+    };
+
+    const handlePrevImage = () => {
+        const idx = getSelectedImageIndex();
+        if (idx > 0) {
+            setSelectedImage(images[idx - 1]);
+        }
+    };
     const [isMobileSettingsOpen, setIsMobileSettingsOpen] = useState(false);
 
     const fabInputRef = useRef<HTMLInputElement>(null);
@@ -503,7 +557,7 @@ export const Home: React.FC = () => {
     const selectionCount = selectedIds.size;
 
     return (
-        <div className="flex flex-col min-h-screen w-full text-ink-main font-sans relative bg-paper-base bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]">
+        <div className="flex flex-col h-screen w-full text-ink-main font-sans relative bg-paper-base bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] overflow-hidden">
             <Navbar
                 onLoginClick={() => setShowLogin(true)}
                 onReset={() => handleClearAll()}
@@ -553,11 +607,14 @@ export const Home: React.FC = () => {
                 </>
             )}
 
-            <div className="flex-1 relative flex flex-col h-screen overflow-hidden pt-16 md:pt-0" id="editor">
+            <div
+                className="flex-1 relative flex flex-col overflow-y-auto overflow-x-hidden pt-16 md:pt-0 no-scrollbar-gutter scroll-smooth"
+                id="editor"
+            >
 
                 {/* Empty State */}
                 {!hasImages && (
-                    <div className="flex-1 flex flex-col items-center justify-center md:justify-start md:pt-24 p-6 z-20 overflow-y-auto w-full max-w-4xl mx-auto">
+                    <div className="flex-1 flex flex-col items-center justify-center md:justify-start md:pt-24 p-6 z-20 w-full max-w-4xl mx-auto">
                         <Dropzone onFilesDropped={(files) => {
                             // Double check enforcement
                             if (settings.signature.enabled && settings.signature.mode === 'single' && files.length > 1) {
@@ -570,6 +627,9 @@ export const Home: React.FC = () => {
 
                         {/* Auto Sliding Reviews */}
                         <HomeReviews />
+
+                        {/* Features Gallery */}
+                        <FeaturesGallery />
                     </div>
                 )}
 
@@ -580,20 +640,39 @@ export const Home: React.FC = () => {
                         {/* Main Canvas Area */}
                         <div className="flex-1 h-full overflow-hidden relative flex flex-col">
 
-                            {/* Image Grid Scroll Area */}
-                            <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 pt-4 no-scrollbar pb-32">
-                                <ImageGrid
-
-                                    images={images}
-                                    onRemove={handleRemoveImage}
-                                    onSelect={(img) => {
-                                        setPreviewMode('general');
-                                        setSelectedImage(img);
-                                    }}
-                                    selectedIds={selectedIds}
-                                    onToggleSelection={handleToggleSelection}
-                                />
-                            </div>
+                            {/* Image Grid OR Live Preview */}
+                            {shouldShowLivePreview && selectedImage ? (
+                                <div className="flex-1 w-full h-full relative border-r border-ink-muted/10 bg-paper-base">
+                                    <PreviewPanel
+                                        image={selectedImage}
+                                        settings={settings}
+                                        updateSettings={setSettings}
+                                        onClose={() => handleSidebarViewChange('main')}
+                                        onSave={handleSaveChanges}
+                                        onCancel={handleDiscardChanges}
+                                        mode={activeSidebarView === 'signature' ? 'placement' : 'general'}
+                                        inline={true}
+                                        onNext={handleNextImage}
+                                        onPrev={handlePrevImage}
+                                        hasPrev={getSelectedImageIndex() > 0}
+                                        hasNext={getSelectedImageIndex() < images.length - 1}
+                                    />
+                                </div>
+                            ) : (
+                                /* Image Grid Scroll Area */
+                                <div className="flex-1 overflow-y-auto overflow-x-hidden p-0 pt-4 no-scrollbar pb-32">
+                                    <ImageGrid
+                                        images={images}
+                                        onRemove={handleRemoveImage}
+                                        onSelect={(img) => {
+                                            setPreviewMode('general');
+                                            setSelectedImage(img);
+                                        }}
+                                        selectedIds={selectedIds}
+                                        onToggleSelection={handleToggleSelection}
+                                    />
+                                </div>
+                            )}
 
                             {/* Fixed Download Bar (Desktop) - Adjusted Z-Index and Position */}
                             {isCompleted && (
@@ -627,7 +706,7 @@ export const Home: React.FC = () => {
                         </div>
 
                         {/* Desktop Sidebar (Fixed Right) */}
-                        <div className="hidden md:block w-[360px] h-full relative z-20">
+                        <div className="hidden md:flex flex-none min-w-[370px] h-full relative z-20 pr-2">
                             <Sidebar
                                 settings={settings}
                                 updateSettings={handleSettingsUpdate}
@@ -641,6 +720,8 @@ export const Home: React.FC = () => {
                                     }
                                 }}
                                 // State Machine Props
+                                onActiveViewChange={handleSidebarViewChange}
+                                activeView={activeSidebarView}
                                 onProcess={processBatch}
                                 isProcessing={isProcessing}
                                 isDirty={isDirty}
@@ -732,6 +813,7 @@ export const Home: React.FC = () => {
                                                 }
                                             }}
                                             // State Machine Props
+                                            onActiveViewChange={handleSidebarViewChange}
                                             onProcess={() => {
                                                 setIsMobileSettingsOpen(false); // Close drawer to show process
                                                 processBatch();
@@ -749,13 +831,17 @@ export const Home: React.FC = () => {
                 )}
             </div>
 
-            {selectedImage && (
+            {selectedImage && !shouldShowLivePreview && (
                 <PreviewPanel
                     image={selectedImage}
                     settings={settings}
                     updateSettings={setSettings}
                     onClose={() => setSelectedImage(null)}
                     mode={previewMode}
+                    onNext={handleNextImage}
+                    onPrev={handlePrevImage}
+                    hasPrev={getSelectedImageIndex() > 0}
+                    hasNext={getSelectedImageIndex() < images.length - 1}
                 />
             )}
             {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
@@ -781,3 +867,5 @@ export const Home: React.FC = () => {
         </div>
     );
 };
+
+export default Home;

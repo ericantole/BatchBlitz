@@ -136,6 +136,7 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
             <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-ink-main font-bold">Enable Signature</span>
+                    <InfoTooltip content={`**Add your signature.**\n\n**Single Mode:** Signature applies to current image only.\n**Batch Mode:** Signature placement applies to ALL images.`} />
                 </div>
                 {/* Apple Toggle */}
                 <button
@@ -241,7 +242,10 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
                     {/* Visual Scale Slider (1-100) */}
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs font-bold text-ink-muted uppercase">
-                            <span>Scale</span>
+                            <div className="flex items-center">
+                                <span>Scale</span>
+                                <InfoTooltip content="Resize signature relative to image width." />
+                            </div>
                             <span className="text-ink-main">{settings.signature.scale}%</span>
                         </div>
                         <input
@@ -255,22 +259,7 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
                         />
                     </div>
 
-                    {/* Interactive Button */}
-                    <div className="pt-2">
-                        <button
-                            className="w-full py-3 bg-ink-main text-white rounded-lg text-xs font-bold uppercase tracking-wide shadow-md hover:translate-y-px active:translate-y-0.5 transition-all flex items-center justify-center gap-2"
-                            onClick={() => {
-                                // Trigger Placement Mode via prop
-                                if (onPlacementStart) onPlacementStart();
-                            }}
-                        >
-                            <Move size={16} />
-                            Place Signature
-                        </button>
-                        <p className="text-[10px] text-center text-ink-muted mt-2">
-                            Click to open draggable preview
-                        </p>
-                    </div>
+
                 </div>
             )}
         </div>

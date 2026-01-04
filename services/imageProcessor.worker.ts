@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import { AppSettings } from '../types';
+import { piexif } from './piexif';
 
 /* 
   Web Worker for BatchBlitz
@@ -173,10 +174,48 @@ async function processImageInWorker(
     const mimeType = settings.convert.format;
     const quality = settings.convert.quality;
 
-    const resultBlob = await canvas.convertToBlob({
+    let resultBlob = await canvas.convertToBlob({
         type: mimeType,
         quality: quality
     });
+
+    // 9. Exif Injection (Worker Thread)
+    const isJpegOutput = mimeType === 'image/jpeg';
+    // Check original file type (File object passed to worker)
+    const isJpegInput = (file.type === 'image/jpeg' || file.type === 'image/jpg') ||
+        /\.(jpe?g)$/i.test((file as File).name || '');
+
+    if (isJpegOutput && isJpegInput) {
+        try {
+            // Read Original Exif
+            const originalBuffer = await file.arrayBuffer();
+            const originalBinary = Array.from(new Uint8Array(originalBuffer))
+                .map(b => String.fromCharCode(b)).join("");
+            const exifObj = piexif.load(originalBinary);
+
+            // If we have valid Exif data
+            if (exifObj && (Object.keys(exifObj['0th']).length > 0 || Object.keys(exifObj['Exif']).length > 0)) {
+                // Read processed image
+                const processedBuffer = await resultBlob.arrayBuffer();
+                const processedBinary = Array.from(new Uint8Array(processedBuffer))
+                    .map(b => String.fromCharCode(b)).join("");
+
+                // Insert Exif (dump -> insert)
+                const exifBytes = piexif.dump(exifObj);
+                const newJpegBinary = piexif.insert(exifBytes, processedBinary);
+
+                // Convert back to Blob
+                const len = newJpegBinary.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = newJpegBinary.charCodeAt(i);
+                }
+                resultBlob = new Blob([bytes], { type: 'image/jpeg' });
+            }
+        } catch (e) {
+            console.warn("Worker: Exif injection failed", e);
+        }
+    }
 
     // Cleanup
     imgBitmap.close();

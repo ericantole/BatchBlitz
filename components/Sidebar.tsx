@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Image as ImageIcon, Type, Zap, ChevronDown, ChevronRight, ChevronLeft, Lock, Upload, FileEdit, Check, X, Sliders, Play, RefreshCw, Save, PenTool, Trash2, Plus, Maximize2, Move, FileSignature } from 'lucide-react';
 import { checkSubscriptionStatus } from '../utils/verification';
 import { AppSettings, OutputFormat } from '../types';
@@ -25,6 +25,8 @@ interface SidebarProps {
   isCompleted: boolean;
   onAddMore?: () => void;
   onPlacementStart?: () => void;
+  onActiveViewChange?: (view: string) => void;
+  activeView?: string;
 }
 
 const AccordionItem: React.FC<{
@@ -38,13 +40,15 @@ const AccordionItem: React.FC<{
   <div className="mb-2 border-b border-gray-100 last:border-0 pb-2">
     <button
       onClick={onToggle}
-      className={`w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200 
-      ${active ? 'text-ink-main' : 'text-ink-muted hover:text-ink-main'}
-      ${isOpen ? 'bg-black/[0.03]' : 'hover:bg-black/[0.02]'}`}
+      className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${isOpen ? 'bg-gray-50' : 'hover:bg-gray-50'
+        }`}
     >
       <div className="flex items-center gap-3">
-        <Icon size={18} strokeWidth={2} className={active ? 'text-accent-gold' : 'text-ink-muted'} />
-        <span className="font-semibold text-[15px] tracking-wide">{title}</span>
+        <div className={`p-2 rounded-lg transition-colors ${active ? 'bg-ink-main text-white shadow-md' : 'bg-white text-ink-main border border-gray-100'
+          }`}>
+          <Icon size={16} strokeWidth={active ? 2.5 : 2} />
+        </div>
+        <span className={`text-sm font-bold ${active ? 'text-ink-main' : 'text-ink-muted'}`}>{title}</span>
       </div>
       {isOpen ? <ChevronDown size={16} className="text-ink-muted" /> : <ChevronRight size={16} className="text-ink-muted" />}
     </button>
@@ -75,10 +79,10 @@ const SynthSlider: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { labe
       <input
         type="range"
         className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer focus:outline-none 
-        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white 
-        [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-gray-200
-        [&::-webkit-slider-thumb]:shadow-sm
+        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
+        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-ink-main 
+        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
+        [&::-webkit-slider-thumb]:shadow-md
         [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
         "
         {...props}
@@ -99,9 +103,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   hasImages,
   isCompleted,
   onAddMore,
-  onPlacementStart
+  onPlacementStart,
+  onActiveViewChange,
+  activeView: propActiveView // Desctructure prop
 }) => {
-  const [activeView, setActiveView] = useState<'main' | 'resize' | 'rename' | 'signature' | 'watermark' | 'convert'>('main');
+  // Use prop if available, otherwise local state (Uncontrolled Fallback)
+  const [localActiveView, setLocalActiveView] = useState<'main' | 'resize' | 'rename' | 'signature' | 'watermark' | 'convert'>('main');
+
+  const activeView = propActiveView || localActiveView;
+
+  const handleToggleView = (view: typeof activeView) => {
+    // If controlled, notify parent
+    if (onActiveViewChange) {
+      onActiveViewChange(activeView === view ? 'main' : view);
+    }
+    // If uncontrolled, update local state
+    if (!propActiveView) {
+      setLocalActiveView((prev) => (prev === view ? 'main' : view) as any);
+    }
+  };
+
   const [isSavingPreset, setIsSavingPreset] = useState(false);
   const [presetName, setPresetName] = useState('');
 
@@ -223,14 +244,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onProcess();
   };
 
+  // --- Smart Height Logic ---
+  const sidebarRef = useRef<HTMLElement>(null);
+  const [standardHeight, setStandardHeight] = useState<number>(0);
+
+  useEffect(() => {
+    if (activeView === 'main' && sidebarRef.current) {
+      // Small delay to ensure render is complete
+      const timer = setTimeout(() => {
+        if (sidebarRef.current) {
+          setStandardHeight(sidebarRef.current.offsetHeight);
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [activeView, settings]); // Re-measure if settings add/remove items
+
   return (
-    <aside className="
-        w-full md:w-[360px] h-full
+    <aside
+      ref={sidebarRef}
+      style={{ maxHeight: (activeView !== 'main' && standardHeight > 0) ? `${standardHeight}px` : '100%' }}
+      className="
+        w-full md:w-[360px] 
+        h-fit max-h-full
         flex flex-col 
         bg-white/90 backdrop-blur-sm 
         md:rounded-2xl rounded-none md:shadow-2xl shadow-none 
         md:border border-l border-ink-muted/10 
-        md:m-4 m-0 
+        md:my-4 md:ml-4 m-0 
         overflow-hidden relative
     ">
 
@@ -238,7 +279,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex items-center justify-between px-6 py-5 bg-white/50 border-b border-gray-100 flex-none z-10">
         <div className="flex items-center gap-2 text-ink-main">
           {activeView !== 'main' ? (
-            <button onClick={() => setActiveView('main')} className="hover:bg-gray-100 p-1 -ml-2 rounded-lg transition-colors">
+            <button onClick={() => handleToggleView('main')} className="hover:bg-gray-100 p-1 -ml-2 rounded-lg transition-colors">
               <ChevronLeft size={20} />
             </button>
           ) : (
@@ -265,25 +306,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* 2. Scrollable Content Area (Drill Down) */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar p-6 bg-white/30 relative">
+      {/* 2. Content Area (Flex Scroll for Smart Constraints) */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar p-4 bg-white/30 relative min-h-0">
 
         {/* MAIN VIEW */}
-        <div className={`space-y-3 transition-opacity duration-300 ${activeView === 'main' ? 'opacity-100' : 'hidden opacity-0'}`}>
-          <PresetSelector
-            onSelect={(s) => updateSettings(s)}
-            onReset={handleReset}
-            isPro={isPro}
-            onShowPaywall={onShowPaywall || (() => { })}
-          />
-          <div className="h-px w-full bg-gray-200/50 my-4" />
+        {activeView === 'main' && (
+          <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
+            <PresetSelector
+              onSelect={(s) => updateSettings(s)}
+              onReset={handleReset}
+              isPro={isPro}
+              onShowPaywall={onShowPaywall || (() => { })}
+            />
+            <div className="h-px w-full bg-gray-200/50 my-4" />
 
-          <MenuButton label="Dimensions" icon={ImageIcon} active={settings.resize.enabled} onClick={() => setActiveView('resize')} />
-          <MenuButton label="Rename" icon={FileEdit} active={settings.rename.enabled} onClick={() => setActiveView('rename')} />
-          <MenuButton label="Sign" icon={PenTool} active={settings.signature.enabled} onClick={() => setActiveView('signature')} />
-          <MenuButton label="Watermark" icon={Type} active={settings.watermark.enabled} onClick={() => setActiveView('watermark')} />
-          <MenuButton label="Format" icon={Zap} active={true} onClick={() => setActiveView('convert')} />
-        </div>
+            <MenuButton label="Dimensions" icon={ImageIcon} active={settings.resize.enabled} onClick={() => handleToggleView('resize')} />
+            <MenuButton label="Rename" icon={FileEdit} active={settings.rename.enabled} onClick={() => handleToggleView('rename')} />
+            <MenuButton label="Sign" icon={PenTool} active={settings.signature.enabled} onClick={() => handleToggleView('signature')} />
+            <MenuButton label="Watermark" icon={Type} active={settings.watermark.enabled} onClick={() => handleToggleView('watermark')} />
+            <MenuButton label="Format" icon={Zap} active={true} onClick={() => handleToggleView('convert')} />
+          </div>
+        )}
 
         {/* DIMENSIONS VIEW */}
         {activeView === 'resize' && (
@@ -505,8 +548,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       </div>
 
-      {/* 3. Fixed Footer */}
-      <div className="mt-auto px-6 pb-6 pt-4 bg-white/50 backdrop-blur-md border-t border-gray-100 z-10">
+      {/* 3. Footer (Fixed at bottom if content overflows, otherwise stacked) */}
+      <div className="flex-none mt-0 px-4 pb-4 pt-4 bg-white/50 backdrop-blur-md border-t border-gray-100 z-10">
 
 
         {/* Quality Presets (Always Visible) */}

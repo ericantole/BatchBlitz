@@ -70,12 +70,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onReset, hasImages
 
         {/* Right Actions */}
         <div className="ml-auto pointer-events-auto flex items-center gap-4">
-          <Link to="/pricing" className="text-sm font-bold text-ink-muted hover:text-ink-main transition-colors hidden md:block">
-            Pricing
-          </Link>
-          <Link to="/about" className="text-sm font-bold text-ink-muted hover:text-ink-main transition-colors hidden md:block">
-            About
-          </Link>
+          {!hasImages && (
+            <>
+              <button onClick={() => document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm font-bold text-ink-muted hover:text-ink-main transition-colors hidden md:block">
+                Features
+              </button>
+              <Link to="/pricing" className="text-sm font-bold text-ink-muted hover:text-ink-main transition-colors hidden md:block">
+                Pricing
+              </Link>
+              <Link to="/about" className="text-sm font-bold text-ink-muted hover:text-ink-main transition-colors hidden md:block">
+                About
+              </Link>
+            </>
+          )}
 
           {!user ? (
             <button
@@ -160,14 +167,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onReset, hasImages
               </div>
             )}
 
-            <Link to="/pricing" className="px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-bold text-ink-main transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-              Pricing
-            </Link>
-            <Link to="/about" className="px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-bold text-ink-main transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
-              About
-            </Link>
-
-            <div className="h-px bg-gray-100 my-1"></div>
+            {!hasImages && (
+              <>
+                <button onClick={() => {
+                  document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' });
+                  setIsMobileMenuOpen(false);
+                }} className="block w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-bold text-ink-main transition-colors">
+                  Features
+                </button>
+                <Link to="/pricing" className="block px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-bold text-ink-main transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                  Pricing
+                </Link>
+                <Link to="/about" className="block px-4 py-3 rounded-xl hover:bg-gray-50 text-sm font-bold text-ink-main transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                  About
+                </Link>
+                <div className="h-px bg-gray-100 my-1"></div>
+              </>
+            )}
 
             {!user ? (
               <button

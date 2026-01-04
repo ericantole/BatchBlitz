@@ -122,7 +122,7 @@ export const piexif = (function () {
                     exif_dict["thumbnail"] = thumb;
                 }
             }
-        } catch (e) { console.warn("Exif read error", e); return null; }
+        } catch (e) { /* console.warn("Exif read error", e); */ return null; }
 
         return exif_dict;
     };

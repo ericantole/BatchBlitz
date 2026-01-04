@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
-import { Home } from './pages/Home';
+import Home from './pages/Home';
 import { Checkout } from './pages/Checkout';
 import { Login } from './pages/Login';
 import { Pricing } from './pages/Pricing';
