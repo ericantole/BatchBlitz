@@ -118,7 +118,7 @@ export const Checkout: React.FC = () => {
                                 <>
                                     <div className="absolute inset-0 bg-yellow-400 blur-xl opacity-20 group-hover:opacity-40 transition-opacity animate-pulse rounded-xl duration-1000" />
                                     <a
-                                        href={`https://test.checkout.dodopayments.com/buy/pdt_0NVdAxwLfQ0jcf8GSwoVd?quantity=1&redirect_url=${encodeURIComponent(window.location.origin + '/thanks')}`}
+                                        href={`https://test.checkout.dodopayments.com/buy/pdt_0NVdAxwLfQ0jcf8GSwoVd?quantity=1&redirect_url=${encodeURIComponent(window.location.origin)}`}
                                         className="relative w-full py-5 bg-gradient-to-r from-accent-gold to-yellow-500 text-white font-bold text-xl rounded-xl shadow-lg hover:shadow-yellow-400/50 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 group overflow-hidden"
                                     >
                                         <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out skew-x-12" />
