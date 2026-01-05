@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { PenTool, Upload, MousePointer2, Layers, AlertCircle, X, Check, Move } from 'lucide-react';
+import { PenTool, Upload, MousePointer2, Layers, AlertCircle, X, Check, Move, RotateCcw, Lock } from 'lucide-react';
 import { AppSettings } from '../types';
 import { InfoTooltip } from './InfoTooltip';
 
@@ -42,6 +42,7 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
             signature: {
                 ...settings.signature,
                 imageData: dataUrl,
+                enabled: dataUrl ? true : settings.signature.enabled, // Auto-enable on new input, but don't disable on clear
                 position: { x: 50, y: 50 } // Always reset to center on new input
             }
         });
@@ -60,8 +61,25 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
 
     // --- Drawing Logic ---
     useEffect(() => {
+        // Clear canvas if no data
         if (settings.signature.inputMode === 'draw' && !settings.signature.imageData) {
             clearCanvas();
+        }
+
+        // Restore canvas if data exists (e.g. returning to tab)
+        if (settings.signature.inputMode === 'draw' && settings.signature.imageData) {
+            const canvas = canvasRef.current;
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    const img = new Image();
+                    img.src = settings.signature.imageData;
+                    img.onload = () => {
+                        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+                        ctx.drawImage(img, 0, 0, WIDTH, HEIGHT);
+                    };
+                }
+            }
         }
     }, [settings.signature.inputMode]);
 
@@ -130,138 +148,191 @@ export const SignatureModule: React.FC<SignatureModuleProps> = ({
         }
     };
 
+    const handleReset = () => {
+        // Reset to defaults but KEEP enabled state
+        updateSettings({
+            ...settings,
+            signature: {
+                ...settings.signature,
+                imageData: null,
+                scale: 20, // Default scale
+                position: { x: 50, y: 50 },
+                enabled: settings.signature.enabled // PRESERVE STATE
+            }
+        });
+
+        // Clear canvas visual
+        if (canvasRef.current) {
+            const ctx = canvasRef.current.getContext('2d');
+            ctx?.clearRect(0, 0, WIDTH, HEIGHT);
+        }
+    };
+
     return (
         <div className="space-y-4">
-            {/* Header Toggle */}
+            {/* Header - Simplified */}
             <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm text-ink-main font-bold">Enable Signature</span>
+                    <span className="text-sm text-ink-main font-bold">Digital Signature</span>
                     <InfoTooltip content={`**Add your signature.**\n\n**Single Mode:** Signature applies to current image only.\n**Batch Mode:** Signature placement applies to ALL images.`} />
                 </div>
-                {/* Apple Toggle */}
-                <button
-                    onClick={() => handleSignatureChange('enabled', !settings.signature.enabled)}
-                    className={`w-10 h-6 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none ${settings.signature.enabled ? 'bg-apple-green' : 'bg-gray-200'}`}
-                >
-                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${settings.signature.enabled ? 'translate-x-4' : 'translate-x-0'}`} />
-                </button>
+                <div className="flex items-center gap-3">
+                    {/* Apple Style Toggle */}
+                    <button
+                        onClick={() => handleSignatureChange('enabled', !settings.signature.enabled)}
+                        className={`w-10 h-6 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none ${settings.signature.enabled ? 'bg-apple-green' : 'bg-gray-200'}`}
+                    >
+                        <span
+                            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${settings.signature.enabled ? 'translate-x-4' : 'translate-x-0'}`}
+                        />
+                    </button>
+
+                    <button
+                        onClick={handleReset}
+                        className="p-1.5 rounded-full text-ink-muted hover:bg-gray-100 hover:text-ink-main transition-colors"
+                        title="Reset Signature"
+                    >
+                        <RotateCcw size={14} />
+                    </button>
+                </div>
             </div>
 
-            {settings.signature.enabled && (
-                <div className="space-y-4 animate-in slide-in-from-top-1 duration-200">
-
-                    {/* Mode Selection */}
-                    <div className="bg-white p-1 rounded-lg border border-gray-100 flex">
-                        <button
-                            onClick={() => handleSignatureChange('mode', 'single')}
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all
-                                ${settings.signature.mode === 'single' ? 'bg-ink-main text-white shadow-sm' : 'text-ink-muted hover:text-ink-main'}
-                            `}
-                        >
-                            <MousePointer2 size={12} />
-                            Single (Drag)
-                        </button>
-                        <button
-                            onClick={() => handleSignatureChange('mode', 'batch')}
-                            className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all
-                                ${settings.signature.mode === 'batch' ? 'bg-ink-main text-white shadow-sm' : 'text-ink-muted hover:text-ink-main'}
-                            `}
-                        >
-                            <Layers size={12} />
-                            Batch (%)
-                        </button>
-                    </div>
-
-                    {settings.signature.mode === 'single' && (
-                        <div className="bg-blue-50 text-blue-700 text-[10px] p-2 rounded-md flex items-start gap-2">
-                            <AlertCircle size={12} className="mt-0.5 shrink-0" />
-                            <span>Only 1 file allowed in Single Mode. Extra files will be ignored.</span>
-                        </div>
-                    )}
-
-                    {/* Input Method */}
-                    <div className="flex bg-gray-100 p-1 rounded-lg">
-                        <button
-                            onClick={() => handleSignatureChange('inputMode', 'draw')}
-                            className={`flex-1 text-xs py-2 font-bold rounded-md transition-all ${settings.signature.inputMode === 'draw' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
-                        >
-                            Draw
-                        </button>
-                        <button
-                            onClick={() => handleSignatureChange('inputMode', 'upload')}
-                            className={`flex-1 text-xs py-2 font-bold rounded-md transition-all ${settings.signature.inputMode === 'upload' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
-                        >
-                            Upload
-                        </button>
-                    </div>
-
-                    {/* Input Area */}
-                    {settings.signature.inputMode === 'draw' ? (
-                        <div className="relative border border-gray-200 rounded-lg bg-white overflow-hidden shadow-inner group">
-                            <canvas
-                                ref={canvasRef}
-                                width={WIDTH}
-                                height={HEIGHT}
-                                className="w-full h-32 touch-none cursor-crosshair"
-                                onMouseDown={startDrawing}
-                                onMouseMove={draw}
-                                onMouseUp={stopDrawing}
-                                onMouseLeave={stopDrawing}
-                                onTouchStart={startDrawing}
-                                onTouchMove={draw}
-                                onTouchEnd={stopDrawing}
-                            />
-                            <button
-                                onClick={clearCanvas}
-                                className="absolute bottom-2 right-2 px-2 py-1 bg-gray-100 hover:bg-gray-200 text-[10px] text-ink-muted font-bold uppercase rounded hover:text-ink-main transition-colors border border-transparent hover:border-gray-300"
-                            >
-                                Clear
-                            </button>
-                            <label className="absolute top-2 left-2 text-[10px] text-gray-400 pointer-events-none select-none font-medium opacity-50">
-                                Sign Here
-                            </label>
-                        </div>
-                    ) : (
-                        <label className={`
-                            flex flex-col items-center justify-center w-full h-32 border border-dashed rounded-lg cursor-pointer bg-white transition-colors
-                            border-gray-300 hover:bg-gray-50
-                        `}>
-                            {settings.signature.imageData ? (
-                                <img src={settings.signature.imageData} alt="Signature" className="h-full object-contain p-4" />
-                            ) : (
-                                <div className="flex flex-col items-center justify-center pt-2 pb-3">
-                                    <Upload className="w-6 h-6 text-gray-400 mb-2" />
-                                    <p className="text-xs text-ink-muted font-bold">Upload PNG</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">Transparent background recommended</p>
-                                </div>
-                            )}
-                            <input type="file" className="hidden" accept="image/png" onChange={handleImageUpload} />
-                        </label>
-                    )}
-
-                    {/* Visual Scale Slider (1-100) */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-bold text-ink-muted uppercase">
-                            <div className="flex items-center">
-                                <span>Scale</span>
-                                <InfoTooltip content="Resize signature relative to image width." />
-                            </div>
-                            <span className="text-ink-main">{settings.signature.scale}%</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="1"
-                            max="100"
-                            step="1"
-                            value={settings.signature.scale}
-                            onChange={(e) => handleSignatureChange('scale', parseInt(e.target.value))}
-                            className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer focus:outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-ink-main"
-                        />
-                    </div>
-
-
+            <div className={`space-y-4 animate-in slide-in-from-top-1 duration-200 ${!settings.signature.enabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                {/* Mode Selection */}
+                <div className="bg-white p-1 rounded-lg border border-gray-100 flex">
+                    <button
+                        onClick={() => handleSignatureChange('mode', 'single')}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all
+                            ${settings.signature.mode === 'single' ? 'bg-ink-main text-white shadow-sm' : 'text-ink-muted hover:text-ink-main'}
+                        `}
+                    >
+                        <MousePointer2 size={12} />
+                        Single (Drag)
+                    </button>
+                    <button
+                        onClick={() => {
+                            if (!isPro) onShowPaywall();
+                            else handleSignatureChange('mode', 'batch');
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1.5 transition-all
+                            ${settings.signature.mode === 'batch' ? 'bg-ink-main text-white shadow-sm' : 'text-ink-muted hover:text-ink-main'}
+                        `}
+                    >
+                        <Layers size={12} />
+                        Batch (%)
+                        {!isPro && <Lock size={10} className="text-accent-gold ml-1" />}
+                    </button>
                 </div>
-            )}
+
+                {settings.signature.mode === 'single' && (
+                    <div className="bg-blue-50 text-blue-700 text-[10px] p-2 rounded-md flex items-start gap-2">
+                        <AlertCircle size={12} className="mt-0.5 shrink-0" />
+                        <span>Only 1 file allowed in Single Mode. Extra files will be ignored.</span>
+                    </div>
+                )}
+
+                {/* Input Method */}
+                <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <button
+                        onClick={() => {
+                            updateSettings({
+                                ...settings,
+                                signature: {
+                                    ...settings.signature,
+                                    inputMode: 'draw',
+                                    imageData: null,
+                                    enabled: settings.signature.enabled // Preserve enabled state
+                                }
+                            });
+                        }}
+                        className={`flex-1 text-xs py-2 font-bold rounded-md transition-all ${settings.signature.inputMode === 'draw' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
+                    >
+                        Draw
+                    </button>
+                    <button
+                        onClick={() => {
+                            updateSettings({
+                                ...settings,
+                                signature: {
+                                    ...settings.signature,
+                                    inputMode: 'upload',
+                                    imageData: null,
+                                    enabled: settings.signature.enabled // Preserve enabled state
+                                }
+                            });
+                        }}
+                        className={`flex-1 text-xs py-2 font-bold rounded-md transition-all ${settings.signature.inputMode === 'upload' ? 'bg-white text-ink-main shadow-sm' : 'text-ink-muted hover:text-ink-main'}`}
+                    >
+                        Upload
+                    </button>
+                </div>
+
+                {/* Input Area */}
+                {settings.signature.inputMode === 'draw' ? (
+                    <div className="relative border border-gray-200 rounded-lg bg-white overflow-hidden shadow-inner group">
+                        <canvas
+                            ref={canvasRef}
+                            width={WIDTH}
+                            height={HEIGHT}
+                            className="w-full h-32 touch-none cursor-crosshair"
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={stopDrawing}
+                            onMouseLeave={stopDrawing}
+                            onTouchStart={startDrawing}
+                            onTouchMove={draw}
+                            onTouchEnd={stopDrawing}
+                        />
+                        <button
+                            onClick={clearCanvas}
+                            className="absolute bottom-2 right-2 px-2 py-1 bg-gray-100 hover:bg-gray-200 text-[10px] text-ink-muted font-bold uppercase rounded hover:text-ink-main transition-colors border border-transparent hover:border-gray-300"
+                        >
+                            Clear
+                        </button>
+                        <label className="absolute top-2 left-2 text-[10px] text-gray-400 pointer-events-none select-none font-medium opacity-50">
+                            Sign Here
+                        </label>
+                    </div>
+                ) : (
+                    <label className={`
+                        flex flex-col items-center justify-center w-full h-32 border border-dashed rounded-lg cursor-pointer bg-white transition-colors
+                        border-gray-300 hover:bg-gray-50
+                    `}>
+                        {settings.signature.imageData ? (
+                            <img src={settings.signature.imageData} alt="Signature" className="h-full object-contain p-4" />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center pt-2 pb-3">
+                                <Upload className="w-6 h-6 text-gray-400 mb-2" />
+                                <p className="text-xs text-ink-muted font-bold">Upload PNG</p>
+                                <p className="text-[10px] text-gray-400 mt-1">Transparent background recommended</p>
+                            </div>
+                        )}
+                        <input type="file" className="hidden" accept="image/png" onChange={handleImageUpload} />
+                    </label>
+                )}
+
+                {/* Visual Scale Slider (1-100) */}
+                <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold text-ink-muted uppercase">
+                        <div className="flex items-center">
+                            <span>Scale</span>
+                            <InfoTooltip content="Resize signature relative to image width." />
+                        </div>
+                        <span className="text-ink-main">{settings.signature.scale}%</span>
+                    </div>
+                    <input
+                        type="range"
+                        min="1"
+                        max="100"
+                        step="1"
+                        value={settings.signature.scale}
+                        onChange={(e) => handleSignatureChange('scale', parseInt(e.target.value))}
+                        className="w-full h-1.5 bg-gray-200 rounded-full appearance-none cursor-pointer focus:outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-ink-main"
+                    />
+                </div>
+
+
+            </div>
         </div>
     );
 };

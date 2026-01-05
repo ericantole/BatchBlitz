@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useRef } from 'react';
-import { Upload, FolderPlus, ImagePlus } from 'lucide-react';
+import { Upload, ImagePlus } from 'lucide-react';
 
 interface DropzoneProps {
   onFilesDropped: (files: File[]) => void;
@@ -65,7 +65,6 @@ const TypewriterBadge = () => {
 
 export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = false }) => {
   const [isDragging, setIsDragging] = useState(false);
-  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -99,12 +98,7 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
         file.type.startsWith('image/')
       );
       if (files.length > 0) onFilesDropped(files);
-    }
-  };
-
-  const handleFolderClick = () => {
-    if (folderInputRef.current) {
-      folderInputRef.current.click();
+      e.target.value = ''; // Reset
     }
   };
 
@@ -184,18 +178,6 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
           title=""
         />
 
-        {/* Folder Input (Hidden, triggered by button) */}
-        <input
-          type="file"
-          ref={folderInputRef}
-          // @ts-ignore - Non-standard attribute for folder selection
-          webkitdirectory=""
-          directory=""
-          multiple
-          className="hidden"
-          onChange={handleFileInput}
-        />
-
         <div className="flex flex-col items-center justify-center text-center pointer-events-none p-8 space-y-8 relative z-0">
           <div className={`
             relative w-24 h-24 flex items-center justify-center rounded-full
@@ -207,7 +189,7 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
 
           <div className="space-y-3">
             <h2 className="text-3xl font-bold tracking-tight text-ink-main">
-              {isDragging ? "Release to Import" : "Drop Photos or Folders Here"}
+              {isDragging ? "Release to Import" : "Drop Photos Here"}
             </h2>
             <div className="flex gap-4 justify-center text-xs text-ink-muted font-medium tracking-widest uppercase">
               <span>JPG</span>
@@ -221,17 +203,6 @@ export const Dropzone: React.FC<DropzoneProps> = ({ onFilesDropped, compact = fa
             <button className="px-6 py-3 bg-white border border-white rounded-sm text-ink-main text-sm font-bold tracking-wide shadow-card hover:-translate-y-0.5 transition-all flex items-center gap-2">
               <ImagePlus size={16} />
               Select Files
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent triggering the parent dropzone click
-                e.preventDefault();
-                handleFolderClick();
-              }}
-              className="px-6 py-3 bg-paper-base border border-white/50 rounded-sm text-ink-muted hover:text-ink-main text-sm font-bold tracking-wide shadow-card hover:-translate-y-0.5 transition-all flex items-center gap-2"
-            >
-              <FolderPlus size={16} />
-              Select Folder
             </button>
           </div>
         </div>

@@ -31,13 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onReset, hasImages
 
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (hasImages) {
-      if (confirm("Go back home? This will clear your current session.")) {
-        window.location.href = "/";
-      }
-    } else {
-      window.location.href = "/";
-    }
+    window.location.href = "/";
   };
 
   const handleManageBilling = () => {
@@ -72,7 +66,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onReset, hasImages
         <div className="ml-auto pointer-events-auto flex items-center gap-4">
           {!hasImages && (
             <>
-              <button onClick={() => document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm font-bold text-ink-muted hover:text-ink-main transition-colors hidden md:block">
+              <button onClick={() => {
+                if (location.pathname === '/') {
+                  document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  navigate('/?section=features');
+                }
+              }} className="text-sm font-bold text-ink-muted hover:text-ink-main transition-colors hidden md:block">
                 Features
               </button>
               <Link to="/pricing" className="text-sm font-bold text-ink-muted hover:text-ink-main transition-colors hidden md:block">

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Zap, Shield, Image as ImageIcon, PenTool, Layers, Maximize2, ChevronDown } from 'lucide-react';
+import { Zap, Shield, Image as ImageIcon, PenTool, Move, FileText, ChevronDown } from 'lucide-react';
 
 const FEATURE_ITEMS = [
     {
@@ -17,9 +17,9 @@ const FEATURE_ITEMS = [
         delay: "delay-100"
     },
     {
-        icon: Layers,
-        title: "Smart Compression",
-        desc: "Reduce file size by up to 90% without visible quality loss.",
+        icon: Move,
+        title: "Drag & Organize",
+        desc: "Visually reorder your queue. Drag and drop to set the exact sequence.",
         color: "bg-blue-500",
         delay: "delay-200"
     },
@@ -31,9 +31,9 @@ const FEATURE_ITEMS = [
         delay: "delay-300"
     },
     {
-        icon: Maximize2,
-        title: "Instant Resize",
-        desc: "Scale dimensions by percentage or fixed pixels accurately.",
+        icon: FileText,
+        title: "Smart Batch Rename",
+        desc: "Organize files with powerful patterns (Date, Sequence, Original) in one click.",
         color: "bg-rose-500",
         delay: "delay-100" // Reuse delay for variety
     },

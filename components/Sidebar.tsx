@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Image as ImageIcon, Type, Zap, ChevronDown, ChevronRight, ChevronLeft, Lock, Upload, FileEdit, Check, X, Sliders, Play, RefreshCw, Save, PenTool, Trash2, Plus, Maximize2, Move, FileSignature } from 'lucide-react';
+import { Image as ImageIcon, Type, Zap, ChevronDown, ChevronRight, ChevronLeft, Lock, Upload, FileEdit, Check, X, Sliders, Play, RefreshCw, Save, PenTool, Trash2, Plus, Maximize2, Move, FileSignature, RotateCcw } from 'lucide-react';
 import { checkSubscriptionStatus } from '../utils/verification';
 import { AppSettings, OutputFormat } from '../types';
 import { RenameModule } from './RenameModule';
@@ -131,11 +131,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // --- Handlers ---
   const handleResizeChange = (key: keyof typeof settings.resize, value: any) => {
-    updateSettings({ ...settings, resize: { ...settings.resize, [key]: value } });
+    const newResize = { ...settings.resize, [key]: value };
+
+    // Auto-Enable Logic: Active if not default (100%)
+    let isEnabled = false;
+    if (newResize.type === 'width') isEnabled = true;
+    else if (newResize.type === 'percentage' && newResize.value !== 100) isEnabled = true;
+
+    updateSettings({ ...settings, resize: { ...newResize, enabled: isEnabled } });
   };
+
+  const handleResetResize = () => {
+    updateSettings({
+      ...settings,
+      resize: {
+        ...settings.resize,
+        enabled: false,
+        type: 'percentage',
+        value: 100
+      }
+    });
+    showToast("Dimensions reset", "success");
+  };
+
   const handleWatermarkChange = (key: keyof typeof settings.watermark, value: any) => {
-    updateSettings({ ...settings, watermark: { ...settings.watermark, [key]: value } });
+    const newWatermark = { ...settings.watermark, [key]: value };
+
+    // Auto-Enable Logic: Active if has text or image
+    let isEnabled = false;
+    if (newWatermark.mode === 'text' && newWatermark.text.length > 0) isEnabled = true;
+    else if (newWatermark.mode === 'image' && newWatermark.imageData) isEnabled = true;
+
+    updateSettings({ ...settings, watermark: { ...newWatermark, enabled: isEnabled } });
   };
+
+  const handleResetWatermark = () => {
+    updateSettings({
+      ...settings,
+      watermark: {
+        ...settings.watermark,
+        enabled: false,
+        text: '',
+        imageData: null
+      }
+    });
+    showToast("Watermark reset", "success");
+  };
+
   const handleConvertChange = (key: keyof typeof settings.convert, value: any) => {
     updateSettings({ ...settings, convert: { ...settings.convert, [key]: value } });
   };
@@ -333,16 +375,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 space-y-6">
             <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
               <div className="flex items-center">
-                <label className="text-sm text-ink-main font-bold">Enable Resize</label>
+                <label className="text-sm text-ink-main font-bold">Resize Image</label>
                 <InfoTooltip content="Scale by percentage (50%) or set a fixed width. Aspect ratio is always preserved." />
               </div>
-              <AppleToggle
-                checked={settings.resize.enabled}
-                onChange={(val) => handleResizeChange('enabled', val)}
-              />
+              <button
+                onClick={handleResetResize}
+                className="p-1.5 rounded-full text-ink-muted hover:bg-gray-100 hover:text-ink-main transition-colors"
+                title="Reset to Original"
+              >
+                <RotateCcw size={14} />
+              </button>
             </div>
 
-            <div className={`space-y-6 transition-all duration-300 ${settings.resize.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+            <div className="space-y-6 transition-all duration-300">
               <div className="flex bg-gray-100/50 p-1.5 rounded-xl border border-gray-100">
                 <button
                   onClick={() => handleResizeChange('type', 'percentage')}
@@ -402,16 +447,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="animate-in slide-in-from-right-8 fade-in duration-300 space-y-6">
             <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
               <div className="flex items-center">
-                <label className="text-sm text-ink-main font-bold">Enable Watermark</label>
+                <label className="text-sm text-ink-main font-bold">Watermark</label>
                 <InfoTooltip content="Upload a PNG logo (Pro) or text. Use the grid or Custom Axis to position." />
               </div>
-              <AppleToggle
-                checked={settings.watermark.enabled}
-                onChange={(val) => handleWatermarkChange('enabled', val)}
-              />
+              <button
+                onClick={handleResetWatermark}
+                className="p-1.5 rounded-full text-ink-muted hover:bg-gray-100 hover:text-ink-main transition-colors"
+                title="Reset Watermark"
+              >
+                <RotateCcw size={14} />
+              </button>
             </div>
 
-            <div className={`space-y-6 transition-all duration-300 ${settings.watermark.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+            <div className="space-y-6 transition-all duration-300">
               {/* Mode Toggles */}
               <div className="flex bg-gray-100/50 p-1.5 rounded-xl border border-gray-100">
                 <button
@@ -430,7 +478,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
 
               {settings.watermark.mode === 'text' ? (
-                <div className="space-y-1">
+                <div className="space-y-4">
                   <input
                     type="text"
                     value={settings.watermark.text}
@@ -438,6 +486,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className="w-full bg-white rounded-lg px-3 py-2 text-sm text-ink-main shadow-sm border border-gray-200 focus:ring-1 focus:ring-accent-gold/20 focus:border-accent-gold transition-all placeholder:text-ink-muted/50"
                     placeholder="© Brand Name"
                   />
+
+                  <SynthSlider
+                    label="Text Scale"
+                    displayValue={`${settings.watermark.fontSize}px`}
+                    min="12"
+                    max="200"
+                    value={settings.watermark.fontSize}
+                    onChange={(e) => handleWatermarkChange('fontSize', parseInt(e.target.value))}
+                  />
+
+                  <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
+                    <label className="text-xs text-ink-muted font-bold uppercase block mb-2">Color</label>
+                    <div className="relative w-full h-8 rounded-md overflow-hidden border border-gray-100">
+                      <input
+                        type="color"
+                        value={settings.watermark.color}
+                        onChange={(e) => handleWatermarkChange('color', e.target.value)}
+                        className="absolute -top-4 -left-4 w-[200%] h-[200%] cursor-pointer p-0 m-0"
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3 relative group">
@@ -466,20 +535,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onChange={(e) => handleWatermarkChange('scale', parseFloat(e.target.value))}
                     disabled={!isPro}
                   />
-                </div>
-              )}
-
-              {settings.watermark.mode === 'text' && (
-                <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-sm">
-                  <label className="text-xs text-ink-muted font-bold uppercase block mb-2">Color</label>
-                  <div className="relative w-full h-8 rounded-md overflow-hidden border border-gray-100">
-                    <input
-                      type="color"
-                      value={settings.watermark.color}
-                      onChange={(e) => handleWatermarkChange('color', e.target.value)}
-                      className="absolute -top-4 -left-4 w-[200%] h-[200%] cursor-pointer p-0 m-0"
-                    />
-                  </div>
                 </div>
               )}
 

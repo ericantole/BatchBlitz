@@ -15,6 +15,8 @@ import { processImage } from '../services/imageProcessor';
 import { normalizeImageFile } from '../utils/imageUtils';
 import { Download, Eraser, Trash2, Lock, X, Settings2, Package, RefreshCw, Play, Check, Plus, Star } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useLocation } from 'react-router-dom';
+import { arrayMove } from '@dnd-kit/sortable';
 import JSZip from 'jszip';
 
 
@@ -253,6 +255,48 @@ export const Home: React.FC = () => {
     }, []);
 
 
+    // Handle deep linking to sections
+    const location = useLocation();
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const section = params.get('section');
+        if (section === 'features') {
+            // Slight delay to ensure DOM is ready
+            setTimeout(() => {
+                document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' });
+                // Clean up URL
+                window.history.replaceState({}, '', '/');
+            }, 300);
+        }
+    }, [location]);
+
+    // --- AUTO-PROCESS EFFECT FOR SIGNATURE ---
+    // User requested that toggling sign/changing mode should automatically update the preview
+    useEffect(() => {
+        if (images.length > 0) {
+            // Debounce slightly to allow state to settle if multiple updates fire?
+            // React state is batched, so this effect runs once per render cycle where deps changed.
+            // Direct call is fine.
+            processBatch();
+        }
+    }, [
+        settings.signature.enabled,
+        settings.signature.mode,
+        settings.signature.inputMode,
+        settings.signature.imageData
+    ]);
+    // Protect against accidental refresh/close
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (images.length > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [images]);
+
     // Monitor Settings for Dirty State
     useEffect(() => {
         if (isCompleted) {
@@ -370,6 +414,10 @@ export const Home: React.FC = () => {
         }
     };
 
+    const handleReorder = (oldIndex: number, newIndex: number) => {
+        setImages((items) => arrayMove(items, oldIndex, newIndex));
+    };
+
     const processBatch = async () => {
         setIsProcessing(true);
         setIsDirty(false); // Reset dirty flag as we are re-processing
@@ -382,7 +430,20 @@ export const Home: React.FC = () => {
         // Sequential Processing (for stability)
         for (let i = 0; i < currentImages.length; i++) {
             const img = currentImages[i];
+
+            // SINGLE MODE RESTRICTION:
+            // If Single Sign mode is enabled, only process the first image.
+            // But wait! User might want to rename/resize others?
+            // User explicit request: "user can download that only means when sign is active in single mode and user sign then sign only applies to first photo and user can download only that 1st photo and not others!"
+            if (settings.signature.enabled && settings.signature.mode === 'single' && i > 0) {
+                // Skip processing for this image
+                continue;
+            }
+
             try {
+                // If Single Mode, we must ensure we don't accidentally apply sign to others 
+                // (Though the continue block above handles it, if we ever decided to process them without sign, we'd clone settings here)
+
                 const result = await processImage(img.file, settings);
                 setImages(prev => prev.map(p => p.id === img.id ? {
                     ...p,
@@ -670,6 +731,7 @@ export const Home: React.FC = () => {
                                         }}
                                         selectedIds={selectedIds}
                                         onToggleSelection={handleToggleSelection}
+                                        onReorder={handleReorder}
                                     />
                                 </div>
                             )}
@@ -683,7 +745,7 @@ export const Home: React.FC = () => {
                         `}>
                                     <div className="flex items-center gap-2 bg-white/80 backdrop-blur-xl border border-white/40 shadow-float rounded-full p-2 pl-4 pr-2 animate-in slide-in-from-bottom-10 fade-in">
                                         <div className="text-xs font-medium text-ink-main mr-2">
-                                            {images.length} files ready
+                                            {images.filter(i => i.status === ImageStatus.COMPLETED).length} files ready
                                         </div>
                                         <Button
                                             onClick={downloadAll}

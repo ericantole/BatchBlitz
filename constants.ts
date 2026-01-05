@@ -36,4 +36,4 @@ export const DEFAULT_SETTINGS: AppSettings = {
   }
 };
 
-export const MAX_FREE_FILES = 20;
+export const MAX_FREE_FILES = 5;
