@@ -35,7 +35,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onLoginClick, onReset, hasImages
   };
 
   const handleManageBilling = () => {
-    window.open('https://www.sandbox.paypal.com/myaccount/autopay/', '_blank');
+    // Dodo Payments Customer Portal (Users log in with email)
+    window.open('https://customer.dodopayments.com', '_blank');
   };
 
   return (

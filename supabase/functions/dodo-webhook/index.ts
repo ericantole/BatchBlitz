@@ -12,6 +12,7 @@ serve(async (req) => {
 
         const eventType = payload.type
         const customerEmail = payload.data?.customer?.email
+        const subscriptionId = payload.data?.subscription_id
 
         // Common Metadata Search (Function)
         // Common Metadata Search (Function)
@@ -75,6 +76,7 @@ serve(async (req) => {
                     email: customerEmail, // Ensure email is stamped
                     is_pro: true,
                     subscription_status: 'active',
+                    subscription_id: subscriptionId, // Save the Dodo Subscription ID
                     updated_at: new Date().toISOString()
                 })
                 .select()
