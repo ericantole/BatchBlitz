@@ -43,3 +43,21 @@ insert into public.profiles (id, email, is_pro)
 select id, email, false
 from auth.users
 on conflict (id) do nothing;
+
+-- 6. Payment Audit Log (New)
+create table if not exists public.payment_events (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id),
+  event_type text not null,
+  provider_payment_id text,
+  amount text,
+  currency text,
+  payload jsonb,
+  created_at timestamp with time zone default now()
+);
+
+-- Allow Service Role full access
+alter table public.payment_events enable row level security;
+create policy "Service Role Full Access" on public.payment_events
+  using (true)
+  with check (true);
