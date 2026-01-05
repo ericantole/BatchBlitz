@@ -1,14 +1,12 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { PayPalSubscriptionButton } from '../components/PayPalSubscriptionButton';
 import { Navbar } from '../components/Navbar';
 import { Zap, ShieldCheck, ArrowLeft, Check, Lock, CreditCard, Award } from 'lucide-react';
 
 export const Checkout: React.FC = () => {
     const { user, isPro, setPro } = useStore();
     const navigate = useNavigate();
-    const [showPayPal, setShowPayPal] = React.useState(false);
 
     useEffect(() => {
         if (!user) {
@@ -117,24 +115,17 @@ export const Checkout: React.FC = () => {
                             </div>
 
                             <div className="py-4 relative group w-full min-h-[80px]">
-                                {!showPayPal ? (
-                                    <>
-                                        <div className="absolute inset-0 bg-yellow-400 blur-xl opacity-20 group-hover:opacity-40 transition-opacity animate-pulse rounded-xl duration-1000" />
-                                        <button
-                                            onClick={() => setShowPayPal(true)}
-                                            className="relative w-full py-5 bg-gradient-to-r from-accent-gold to-yellow-500 text-white font-bold text-xl rounded-xl shadow-lg hover:shadow-yellow-400/50 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 group overflow-hidden"
-                                        >
-                                            <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out skew-x-12" />
-                                            <span>Subscribe Now</span>
-                                            <Zap size={24} className="fill-current group-hover:rotate-12 transition-transform" />
-                                        </button>
-                                    </>
-                                ) : (
-                                    <div className="animate-in fade-in zoom-in-95 duration-300">
-                                        <p className="text-xs font-bold text-ink-muted uppercase mb-2">Select Payment Method</p>
-                                        <PayPalSubscriptionButton />
-                                    </div>
-                                )}
+                                <>
+                                    <div className="absolute inset-0 bg-yellow-400 blur-xl opacity-20 group-hover:opacity-40 transition-opacity animate-pulse rounded-xl duration-1000" />
+                                    <a
+                                        href={`https://test.checkout.dodopayments.com/buy/pdt_0NVdAxwLfQ0jcf8GSwoVd?quantity=1&redirect_url=${encodeURIComponent(window.location.origin + '/thanks')}`}
+                                        className="relative w-full py-5 bg-gradient-to-r from-accent-gold to-yellow-500 text-white font-bold text-xl rounded-xl shadow-lg hover:shadow-yellow-400/50 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 group overflow-hidden"
+                                    >
+                                        <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out skew-x-12" />
+                                        <span>Subscribe with Dodo</span>
+                                        <Zap size={24} className="fill-current group-hover:rotate-12 transition-transform" />
+                                    </a>
+                                </>
                             </div>
 
                             {/* Trust Badges */}
