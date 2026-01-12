@@ -36,15 +36,25 @@ export const RenameModule: React.FC<RenameModuleProps> = ({ settings, updateSett
   return (
     <div className="space-y-4">
       {/* Enable Toggle - REMOVED, Auto-detected */}
-      <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+      <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
         <div className="flex items-center">
-          <label className="text-xs text-ink-main font-medium">Rename Files</label>
+          <label className="text-sm text-ink-main font-bold">Rename Files</label>
           <InfoTooltip content={`**Rename Variables:**\n• {n} = Auto-numbering\n• {date} = Today's date\n• {original} = Original filename\n\n**Tip:** Use 'Start #' to begin counting from a specific number (e.g. 100).`} />
         </div>
+
+        {/* Apple Style Toggle */}
+        <button
+          onClick={() => handleToggle(!rename.enabled)}
+          className={`w-10 h-6 rounded-full relative transition-colors duration-200 ease-in-out focus:outline-none ${rename.enabled ? 'bg-apple-green' : 'bg-gray-200'}`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${rename.enabled ? 'translate-x-4' : 'translate-x-0'}`}
+          />
+        </button>
       </div>
 
       {/* Pattern Input - Always Visible */}
-      <div className="space-y-3">
+      <div className={`space-y-3 transition-opacity duration-200 ${!rename.enabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
         <div className="relative">
           {!isPro && (
             <button

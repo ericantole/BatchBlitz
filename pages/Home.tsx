@@ -522,17 +522,22 @@ export const Home: React.FC = () => {
 
     const getNewFilename = (originalName: string, index: number) => {
         const { rename } = settings;
-        if (!rename.enabled) {
-            const namePart = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-            return `${namePart}_batchblitz`;
-        }
-
-        let pattern = rename.pattern;
-        if (!isPro && pattern !== '{original}_{n}') {
-            pattern = '{original}_{n}';
-        }
-
         const namePart = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+
+        // 1. FREE USERS: Always Enforce Branding (Free Ad)
+        if (!isPro) {
+            const sequenceNumber = index + (rename.startSequence || 1);
+            // requested structure: original_n_batchblitz
+            return `${namePart}_${sequenceNumber}_batchblitz`;
+        }
+
+        // 2. PRO USERS: Respect Toggle
+        if (!rename.enabled) {
+            return namePart; // Clean original name
+        }
+
+        // 3. PRO USERS (Enabled): Custom Pattern
+        let pattern = rename.pattern;
         const dateStr = new Date().toISOString().split('T')[0];
         const sequenceNumber = index + (rename.startSequence || 1);
 
